@@ -53,7 +53,7 @@ DEBIAN_SYSTEM := $(shell test -f /etc/debian_version && echo yes || echo no)
 
 ifneq ($(KERNELSRC_EXISTS),yes)
 ifeq ($(DEBIAN_SYSTEM),yes)
-CNXT_KERNELSRC := /usr/src/kernel-headers-$(shell uname -r)
+CNXT_KERNELSRC := /usr/src/linux-headers-$(shell uname -r)
 else
 CNXT_KERNELSRC := /usr/src/linux
 endif
