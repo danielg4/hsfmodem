@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2003-2004 Linuxant inc.
- *
- * NOTE: The use and distribution of this software is governed by the terms in
- * the file LICENSE, which is included in the package. You must read this and
- * agree to these terms before using or distributing this software.
- *
- */
+* Copyright (c) 2003-2004 Linuxant inc.
+*
+* NOTE: The use and distribution of this software is governed by the terms in
+* the file LICENSE, which is included in the package. You must read this and
+* agree to these terms before using or distributing this software.
+*
+*/
 
 #include "oscompat.h"
 #include "osservices.h"
@@ -310,16 +310,16 @@ static char* eCodeStr(CFGMGR_CODE eCode)
 		caseretstr(LICENSE_KEY);
 		caseretstr(LICENSE_STATUS);
 		caseretstr(LAST);
-		default: {
-					 static char buf[80];
+	default: {
+			static char buf[80];
 
-					 if((eCode & 0xffff) == CFGMGR_COUNTRY_STRUCT) {
-					 	sprintf(buf, "COUNTRY_STRUCT_%02x\n", eCode >> 16);
-					 } else {
-					 	sprintf(buf, "code_%d\n", eCode);
-					 }
-					 return buf;
-				 }
+			if((eCode & 0xffff) == CFGMGR_COUNTRY_STRUCT) {
+				sprintf(buf, "COUNTRY_STRUCT_%02x\n", eCode >> 16);
+			} else {
+				sprintf(buf, "code_%d\n", eCode);
+			}
+			return buf;
+		}
 	}
 }
 
@@ -357,48 +357,48 @@ static const PROFILE_DATA g_FactoryProfile = {
 };
 
 enum NVM_FORMAT {
-    NVM_FORMAT_HEXBYTES,
-    NVM_FORMAT_HEXSHORTS,
-    NVM_FORMAT_HEXLONGS,
-    NVM_FORMAT_STRING
+	NVM_FORMAT_HEXBYTES,
+	NVM_FORMAT_HEXSHORTS,
+	NVM_FORMAT_HEXLONGS,
+	NVM_FORMAT_STRING
 };
 
 static
 enum NVM_FORMAT nvmFormat(CFGMGR_CODE eCode)
 {
-    switch(eCode) {
+	switch(eCode) {
 	case CFGMGR_COUNTRY_CODE:
 	case CFGMGR_PREVIOUS_COUNTRY_CODE:
 	case CFGMGR_PCI_VENDOR_ID:
 	case CFGMGR_PCI_DEVICE_ID:
-	    return NVM_FORMAT_HEXSHORTS;
+		return NVM_FORMAT_HEXSHORTS;
 
 	case CFGMGR_HARDWARE_PROFILE:
 	case CFGMGR_LICENSE_OWNER:
 	case CFGMGR_LICENSE_STATUS:
-	    return NVM_FORMAT_STRING;
+		return NVM_FORMAT_STRING;
 
 	case CFGMGR_HARDWARE_ID:
 	case CFGMGR_LICENSE_KEY:
-	    return NVM_FORMAT_HEXLONGS;
+		return NVM_FORMAT_HEXLONGS;
 
 	default:
-	    return NVM_FORMAT_HEXBYTES;
-    }
+		return NVM_FORMAT_HEXBYTES;
+	}
 }
 
 
 typedef struct {
-    struct list_head link;
-    char *pathname;
-    PVOID pBuf;
-    UINT32 dwSize;
-    enum NVM_FORMAT nvmFormat;
+	struct list_head link;
+	char *pathname;
+	PVOID pBuf;
+	UINT32 dwSize;
+	enum NVM_FORMAT nvmFormat;
 } nvmelem_t;
 
 typedef struct {
-    struct list_head link;
-    char *instname;
+	struct list_head link;
+	char *instname;
 } nvmnewinst_t;
 
 /* These lists are protected by nvmelem_writelist_sem */
@@ -418,8 +418,8 @@ static BOOL NVM_WriteListAppend(const char *pathname, PVOID pBuf, UINT32 dwSize,
 
 	nel = OsAllocate(sizeof(nvmelem_t) + dwSize + strlen(pathname) + 1);
 	if(!nel) {
-	    printk(KERN_ERR"%s: cannot allocate memory for element %s\n", __FUNCTION__, pathname);
-	    return FALSE;
+		printk(KERN_ERR"%s: cannot allocate memory for element %s\n", __FUNCTION__, pathname);
+		return FALSE;
 	}
 
 	nel->dwSize = dwSize;
@@ -439,112 +439,118 @@ static BOOL NVM_WriteListAppend(const char *pathname, PVOID pBuf, UINT32 dwSize,
 static BOOL
 NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat)
 {
-    char buf[MAX_OEM_STR_LEN + 4], *dp;
-    unsigned char *p;
-    UINT32 size;
-    int errno;
+	char buf[MAX_OEM_STR_LEN + 4], *dp;
+	unsigned char *p;
+	UINT32 size;
+	int errno;
 
-    p = pBuf;
-    dp = buf;
+	p = pBuf;
+	dp = buf;
 
-    if(nvmFormat == NVM_FORMAT_HEXBYTES) {
-	for (size = 1; size < dwSize; size++) {
-	    sprintf (dp, "%02X,", *p++);
-	    dp += 3;
-	    if(((size) % 16) == 0) {
-		*dp++ = '\n';
-		if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
-		    printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
-		    goto err;
+	if(nvmFormat == NVM_FORMAT_HEXBYTES) {
+		for (size = 1; size < dwSize; size++) {
+			sprintf (dp, "%02X,", *p++);
+			dp += 3;
+			if(((size) % 16) == 0) {
+				*dp++ = '\n';
+				if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
+					printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
+					goto err;
+				}
+				dp = buf;
+			}
 		}
-		dp = buf;
-	    }
-	}
-	sprintf (dp, "%02X\n", *p++);
-	dp += 3;
+		sprintf (dp, "%02X\n", *p++);
+		dp += 3;
 
-    } else if((nvmFormat == NVM_FORMAT_HEXSHORTS) && !(dwSize % sizeof(UINT16))) {
-	for (size = sizeof(UINT16); size < dwSize; size += sizeof(UINT16)) {
-	    sprintf (dp, "%04X,", *(UINT16*)p);
-	    p += sizeof(UINT16);
-	    dp += 5;
-	    if(((size) % 16) == 0) {
-		*dp++ = '\n';
-		if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
-		    printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
-		    goto err;
+	} else if((nvmFormat == NVM_FORMAT_HEXSHORTS) && !(dwSize % sizeof(UINT16))) {
+		for (size = sizeof(UINT16); size < dwSize; size += sizeof(UINT16)) {
+			sprintf (dp, "%04X,", *(UINT16*)p);
+			p += sizeof(UINT16);
+			dp += 5;
+			if(((size) % 16) == 0) {
+				*dp++ = '\n';
+				if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
+					printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
+					goto err;
+				}
+				dp = buf;
+			}
 		}
-		dp = buf;
-	    }
-	}
-	sprintf (dp, "%04X\n", *(UINT16*)p);
-	p += sizeof(UINT16);
-	dp += 5;
+		sprintf (dp, "%04X\n", *(UINT16*)p);
+		p += sizeof(UINT16);
+		dp += 5;
 
-    } else if((nvmFormat == NVM_FORMAT_HEXLONGS) && !(dwSize % sizeof(UINT32))) {
-	for (size = sizeof(UINT32); size < dwSize; size += sizeof(UINT32)) {
-	    sprintf (dp, "%08X,", *(UINT32*)p);
-	    p += sizeof(UINT32);
-	    dp += 9;
-	    if(((size) % 16) == 0) {
-		*dp++ = '\n';
-		if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
-		    printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
-		    goto err;
+	} else if((nvmFormat == NVM_FORMAT_HEXLONGS) && !(dwSize % sizeof(UINT32))) {
+		for (size = sizeof(UINT32); size < dwSize; size += sizeof(UINT32)) {
+			sprintf (dp, "%08X,", *(UINT32*)p);
+			p += sizeof(UINT32);
+			dp += 9;
+			if(((size) % 16) == 0) {
+				*dp++ = '\n';
+				if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
+					printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
+					goto err;
+				}
+				dp = buf;
+			}
 		}
-		dp = buf;
-	    }
+		sprintf (dp, "%08X\n", *(UINT32*)p);
+		p += sizeof(UINT32);
+		dp += 9;
+
+	} else if(nvmFormat == NVM_FORMAT_STRING) {
+		size = (dwSize < MAX_OEM_STR_LEN) ? dwSize : MAX_OEM_STR_LEN;
+		buf[0] = '"';
+		strncpy(&buf[1], pBuf, size);
+		buf[1 + size ] = '\0';
+		size = strlen(buf);
+		buf[size++] = '"';
+		buf[size++] = '\n';
+		buf[size] = '\0';
+		dp += size;
+
+	} else {
+		printk(KERN_ERR "%s: invalid NVM format (%d)\n", __FUNCTION__, nvmFormat);
+		goto err;
 	}
-	sprintf (dp, "%08X\n", *(UINT32*)p);
-	p += sizeof(UINT32);
-	dp += 9;
 
-    } else if(nvmFormat == NVM_FORMAT_STRING) {
-	size = (dwSize < MAX_OEM_STR_LEN) ? dwSize : MAX_OEM_STR_LEN;
-	buf[0] = '"';
-	strncpy(&buf[1], pBuf, size);
-	buf[1 + size ] = '\0';
-	size = strlen(buf);
-	buf[size++] = '"';
-	buf[size++] = '\n';
-	buf[size] = '\0';
-	dp += size;
-
-    } else {
-	printk(KERN_ERR "%s: invalid NVM format (%d)\n", __FUNCTION__, nvmFormat);
-	goto err;
-    }
-
-    if(dp - buf) {
-	if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
-	    printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
-	    goto err;
+	if(dp - buf) {
+		if (OsFWrite(buf, 1, dp - buf, file, &errno) != (dp - buf)) {
+			printk(KERN_ERR "%s: write error to %s errno=%d\n", __FUNCTION__, pathname, errno);
+			goto err;
+		}
 	}
-    }
 
-    OsFClose(file);
+	OsFClose(file);
 
-    if(osnvm_debug)
-    	printk(KERN_DEBUG"%s: wrote %u bytes to %s\n", __FUNCTION__, dwSize, pathname);
+	if(osnvm_debug)
+	printk(KERN_DEBUG"%s: wrote %u bytes to %s\n", __FUNCTION__, dwSize, pathname);
 
-    return TRUE;
+	return TRUE;
 
 err:
-    if(file)
+	if(file)
 	OsFClose(file);
-    return FALSE;
+	return FALSE;
 }
 
 
 static int
 NVM_NewInstance(char *instname)
 {
-    char *argv[] = { CNXTSBINDIR"/"CNXTTARGET"config", "--auto", "--newinstance", instname, NULL };
-    char *envp[] = { "HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin:"CNXTSBINDIR, NULL };
+	char *argv[] = { CNXTSBINDIR"/"CNXTTARGET"config", "--auto", "--newinstance", instname, NULL };
+	char *envp[] = { "HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin:"CNXTSBINDIR, NULL };
+	char buf[1024];
+	int i;
+	
+	buf[0]=0;
+	for(i=0;argv[i] != NULL;i++)
+		strcat(buf,argv[i]);
+	
+	printk(KERN_DEBUG"%s: instname=%s\n", __FUNCTION__, buf);
 
-    //printk(KERN_DEBUG"%s: instname=%s\n", __FUNCTION__, instname);
-
-    return OsForkWait(argv[0], argv, envp);
+	return OsForkWait(argv[0], argv, envp);
 }
 
 
@@ -552,287 +558,287 @@ __shimcall__
 void
 NVM_WriteFlushList(BOOL write)
 {
-    down(&nvmelem_writelist_sem);
-
-    while(!list_empty(&nvm_newinst_list)) {
-	int err;
-
-	nvmnewinst_t *ni = list_entry(nvm_newinst_list.next, nvmnewinst_t, link);
-	list_del(&ni->link);
-	up(&nvmelem_writelist_sem);
-
-	err = write ? NVM_NewInstance(ni->instname) : 0;
-	if (err) {
-	    //printk(KERN_ERR "%s: cannot create instance %s: err=%d failed again!\n", __FUNCTION__, ni->instname, err);
-	    down(&nvmelem_writelist_sem);
-	    list_add(&ni->link, &nvm_newinst_list);
-	    goto done;
-	}
-
-	printk(KERN_WARNING "%s: instance %s successfully created\n", __FUNCTION__, ni->instname);
-
-	OsFree(ni->instname);
-	OsFree(ni);
-
 	down(&nvmelem_writelist_sem);
-    }
 
-    while(!list_empty(&nvmelem_writelist)) {
+	while(!list_empty(&nvm_newinst_list)) {
+		int err;
 
-	nvmelem_t *nel = list_entry(nvmelem_writelist.next, nvmelem_t, link);
+		nvmnewinst_t *ni = list_entry(nvm_newinst_list.next, nvmnewinst_t, link);
+		list_del(&ni->link);
+		up(&nvmelem_writelist_sem);
 
-	if(write) {
-	    FILE *file;
-	    int err;
+		err = write ? NVM_NewInstance(ni->instname) : 0;
+		if (err) {
+			//printk(KERN_ERR "%s: cannot create instance %s: err=%d failed again!\n", __FUNCTION__, ni->instname, err);
+			down(&nvmelem_writelist_sem);
+			list_add(&ni->link, &nvm_newinst_list);
+			goto done;
+		}
 
-	    file = OsFOpen(nel->pathname, "w", &err);
-	    if (!file) {
-		if(err == -EROFS)
-		    goto done;
+		printk(KERN_WARNING "%s: instance %s successfully created\n", __FUNCTION__, ni->instname);
 
-		printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, nel->pathname, err);
+		OsFree(ni->instname);
+		OsFree(ni);
 
-	    } else {
-		//printk(KERN_DEBUG"%s: writing %s\n", __FUNCTION__, nel->pathname);
-		NVM_WriteFileData(file, nel->pathname, nel->pBuf, nel->dwSize, nel->nvmFormat);
-	    }
+		down(&nvmelem_writelist_sem);
 	}
 
-	list_del(&nel->link);
+	while(!list_empty(&nvmelem_writelist)) {
 
-	OsFree(nel);
-    }
+		nvmelem_t *nel = list_entry(nvmelem_writelist.next, nvmelem_t, link);
+
+		if(write) {
+			FILE *file;
+			int err;
+
+			file = OsFOpen(nel->pathname, "w", &err);
+			if (!file) {
+				if(err == -EROFS)
+				goto done;
+
+				printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, nel->pathname, err);
+
+			} else {
+				//printk(KERN_DEBUG"%s: writing %s\n", __FUNCTION__, nel->pathname);
+				NVM_WriteFileData(file, nel->pathname, nel->pBuf, nel->dwSize, nel->nvmFormat);
+			}
+		}
+
+		list_del(&nel->link);
+
+		OsFree(nel);
+	}
 
 done:
-    up(&nvmelem_writelist_sem);
+	up(&nvmelem_writelist_sem);
 }
 
 static BOOL
 NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat, BOOL suspendInProgress)
 {
-    int err;
-    FILE *file;
+	int err;
+	FILE *file;
 
-    down(&nvmelem_writelist_sem);
-    if(!list_empty(&nvm_newinst_list) || !list_empty(&nvmelem_writelist) || suspendInProgress) {
-	if(!NVM_WriteListAppend(pathname, pBuf, dwSize, nvmFormat)) {
-	    up(&nvmelem_writelist_sem);
-	    return FALSE;
+	down(&nvmelem_writelist_sem);
+	if(!list_empty(&nvm_newinst_list) || !list_empty(&nvmelem_writelist) || suspendInProgress) {
+		if(!NVM_WriteListAppend(pathname, pBuf, dwSize, nvmFormat)) {
+			up(&nvmelem_writelist_sem);
+			return FALSE;
+		}
+
+		up(&nvmelem_writelist_sem);
+
+		NVM_WriteFlushList(TRUE);
+
+		return TRUE;
+	}
+
+	file = OsFOpen(pathname, "w", &err);
+	if (!file) {
+		if(err == -EROFS) {
+			BOOL res;
+
+			//printk(KERN_DEBUG"%s: delaying write %s\n", __FUNCTION__, pathname);
+			res = NVM_WriteListAppend(pathname, pBuf, dwSize, nvmFormat);
+			up(&nvmelem_writelist_sem);
+			return res;
+		}
+
+		up(&nvmelem_writelist_sem);
+		printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
+		return FALSE;
 	}
 
 	up(&nvmelem_writelist_sem);
 
-	NVM_WriteFlushList(TRUE);
+	//printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
 
-	return TRUE;
-    }
-
-    file = OsFOpen(pathname, "w", &err);
-    if (!file) {
-	if(err == -EROFS) {
-	    BOOL res;
-
-	    //printk(KERN_DEBUG"%s: delaying write %s\n", __FUNCTION__, pathname);
-	    res = NVM_WriteListAppend(pathname, pBuf, dwSize, nvmFormat);
-	    up(&nvmelem_writelist_sem);
-	    return res;
-	}
-
-	up(&nvmelem_writelist_sem);
-	printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
-	return FALSE;
-    }
-
-    up(&nvmelem_writelist_sem);
-
-    //printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
-
-    return NVM_WriteFileData(file, pathname, pBuf, dwSize, nvmFormat);
+	return NVM_WriteFileData(file, pathname, pBuf, dwSize, nvmFormat);
 }
 
 /* Read in file containing either:
- * - Sequence of two-digit hex bytes
- * - String enclosed in ""
- */
+* - Sequence of two-digit hex bytes
+* - String enclosed in ""
+*/
 static BOOL
 NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
 {
-    int err;
-    FILE *file;
-    char buf[100], *p, *dp;
-    BOOL stringMode = FALSE;
-    UINT32 l;
-    int n;
-    struct list_head *lh;
-    int errno;
+	int err;
+	FILE *file;
+	char buf[100], *p, *dp;
+	BOOL stringMode = FALSE;
+	UINT32 l;
+	int n;
+	struct list_head *lh;
+	int errno;
 
-    down(&nvmelem_writelist_sem);
-    for(lh = nvmelem_writelist.prev; lh != &nvmelem_writelist; lh = lh->prev) {
-	nvmelem_t *nel = list_entry(lh, nvmelem_t, link);
+	down(&nvmelem_writelist_sem);
+	for(lh = nvmelem_writelist.prev; lh != &nvmelem_writelist; lh = lh->prev) {
+		nvmelem_t *nel = list_entry(lh, nvmelem_t, link);
 
-	if(!strcmp(pathname, nel->pathname)) {
-	    l = *pdwSize;
-	    if(l > nel->dwSize)
-	       l = nel->dwSize;
+		if(!strcmp(pathname, nel->pathname)) {
+			l = *pdwSize;
+			if(l > nel->dwSize)
+			l = nel->dwSize;
 
-	    memcpy(pBuf, nel->pBuf, l);
-	    memset(pBuf + l, 0, *pdwSize - l); /* zero pBuf remainder */
-	    *pdwSize = l;
+			memcpy(pBuf, nel->pBuf, l);
+			memset(pBuf + l, 0, *pdwSize - l); /* zero pBuf remainder */
+			*pdwSize = l;
 
-	    if(osnvm_debug)
-		printk(KERN_DEBUG"%s: returning %s from writelist\n", __FUNCTION__, pathname);
+			if(osnvm_debug)
+			printk(KERN_DEBUG"%s: returning %s from writelist\n", __FUNCTION__, pathname);
 
-	    up(&nvmelem_writelist_sem);
-	    return TRUE;
+			up(&nvmelem_writelist_sem);
+			return TRUE;
+		}
 	}
-    }
-    up(&nvmelem_writelist_sem);
+	up(&nvmelem_writelist_sem);
 
-    file = OsFOpen(pathname, "r", &err);
-    dp = pBuf;
-    l = *pdwSize;
+	file = OsFOpen(pathname, "r", &err);
+	dp = pBuf;
+	l = *pdwSize;
 
-    if (file) {
+	if (file) {
 
-	if(osnvm_debug)
-	    printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
+		if(osnvm_debug)
+		printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
 
-	while(l > 0) {
-	    n = OsFRead(buf, 1, sizeof(buf)-1, file, &errno);
-	    if(n <= 0)
-		break;
-
-	    buf[n] = '\0';
-
-	    for(p = buf; (l > 0) && (p < &buf[n]); p++) {
-
-		if(*p == '"') {
-		    stringMode = !stringMode;
-		    continue;
-		}
-
-		if(stringMode) {
-		    *dp++ = *p;
-		    l--;
-		    continue;
-		}
-
-		if(!isxdigit(*p))
-		    continue;
-
-		/* hack to read COUNTRY_CODE as UINT16 without swapping: */
-		if((p == buf) && (n == 5) && (l >= *pdwSize) && (*pdwSize == sizeof(UINT16)) &&
-			isxdigit(p[1]) && isxdigit(p[2]) &&
-			isxdigit(p[3]) && p[4] == '\n') {
-		    *((UINT16*)dp) = simple_strtoul (p, &p, 16);
-		    dp += 2;
-		    l -= 2;
-		    continue;
-		}
-
-		/* hack to read LICENSE_KEY as UINT32 without swapping: */
-		if((p == buf) && (n == 9) && (l >= *pdwSize) && (*pdwSize == sizeof(UINT32)) &&
-			isxdigit(p[1]) && isxdigit(p[2]) &&
-			isxdigit(p[3]) && isxdigit(p[4]) &&
-			isxdigit(p[5]) && isxdigit(p[6]) &&
-			isxdigit(p[7]) && p[8] == '\n') {
-		    *((UINT32*)dp) = simple_strtoul (p, &p, 16);
-		    dp += 4;
-		    l -= 4;
-		    continue;
-		}
-
-		if(p == &buf[sizeof(buf)-1-1]) {
-		    /* value split accross buffer boundary, read next chunk */
-		    buf[0] = *p;
-		    p = buf;
-		    n = OsFRead(buf+1, 1, sizeof(buf)-1-1, file, &errno);
-		    if(n < 0) {
+		while(l > 0) {
+			n = OsFRead(buf, 1, sizeof(buf)-1, file, &errno);
+			if(n <= 0)
 			break;
-		    }
-		    n++;
-		    buf[n] = '\0';
+
+			buf[n] = '\0';
+
+			for(p = buf; (l > 0) && (p < &buf[n]); p++) {
+
+				if(*p == '"') {
+					stringMode = !stringMode;
+					continue;
+				}
+
+				if(stringMode) {
+					*dp++ = *p;
+					l--;
+					continue;
+				}
+
+				if(!isxdigit(*p))
+				continue;
+
+				/* hack to read COUNTRY_CODE as UINT16 without swapping: */
+				if((p == buf) && (n == 5) && (l >= *pdwSize) && (*pdwSize == sizeof(UINT16)) &&
+						isxdigit(p[1]) && isxdigit(p[2]) &&
+						isxdigit(p[3]) && p[4] == '\n') {
+					*((UINT16*)dp) = simple_strtoul (p, &p, 16);
+					dp += 2;
+					l -= 2;
+					continue;
+				}
+
+				/* hack to read LICENSE_KEY as UINT32 without swapping: */
+				if((p == buf) && (n == 9) && (l >= *pdwSize) && (*pdwSize == sizeof(UINT32)) &&
+						isxdigit(p[1]) && isxdigit(p[2]) &&
+						isxdigit(p[3]) && isxdigit(p[4]) &&
+						isxdigit(p[5]) && isxdigit(p[6]) &&
+						isxdigit(p[7]) && p[8] == '\n') {
+					*((UINT32*)dp) = simple_strtoul (p, &p, 16);
+					dp += 4;
+					l -= 4;
+					continue;
+				}
+
+				if(p == &buf[sizeof(buf)-1-1]) {
+					/* value split accross buffer boundary, read next chunk */
+					buf[0] = *p;
+					p = buf;
+					n = OsFRead(buf+1, 1, sizeof(buf)-1-1, file, &errno);
+					if(n < 0) {
+						break;
+					}
+					n++;
+					buf[n] = '\0';
+				}
+
+				*dp++ = simple_strtoul (p, &p, 16);
+				l--;
+			}
 		}
+		OsFClose(file);
 
-		*dp++ = simple_strtoul (p, &p, 16);
-		l--;
-	    }
-	}
-	OsFClose(file);
-
-	if(osnvm_debug && l)
+		if(osnvm_debug && l)
 		printk(KERN_DEBUG"%s: read %u bytes (%u missing) from %s\n", __FUNCTION__, *pdwSize - l, l, pathname);
-    } else {
-	if(osnvm_debug)
-	    printk(KERN_DEBUG"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
-    }
+	} else {
+		if(osnvm_debug)
+		printk(KERN_DEBUG"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
+	}
 
-    *pdwSize -= l;
+	*pdwSize -= l;
 
-    memset(dp, 0, l); /* zero pBuf remainder */
+	memset(dp, 0, l); /* zero pBuf remainder */
 
-    return file ? TRUE : FALSE;
+	return file ? TRUE : FALSE;
 }
 
 static BOOL
 NVM_ReadStaticParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
-    char pathname[100];
+	char pathname[100];
 
-    snprintf(pathname, sizeof(pathname), "%s/%s/%s", cnxt_nvmdir_static, pDevNode->hwProfile, name);
-    return NVM_ReadFile(pathname, pBuf, pdwSize);
+	snprintf(pathname, sizeof(pathname), "%s/%s/%s", cnxt_nvmdir_static, pDevNode->hwProfile, name);
+	return NVM_ReadFile(pathname, pBuf, pdwSize);
 }
 
 static BOOL
 NVM_ReadDynamicParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
-    char pathname[100];
+	char pathname[100];
 
-    snprintf(pathname, sizeof(pathname), "%s/%d-%s/%s", cnxt_nvmdir_dynamic, pDevNode->hwInstNum, pDevNode->hwInstName, name);
-    return NVM_ReadFile(pathname, pBuf, pdwSize);
+	snprintf(pathname, sizeof(pathname), "%s/%d-%s/%s", cnxt_nvmdir_dynamic, pDevNode->hwInstNum, pDevNode->hwInstName, name);
+	return NVM_ReadFile(pathname, pBuf, pdwSize);
 }
 
 static BOOL
 NVM_ReadCountryParm(POS_DEVNODE pDevNode, int countryt35, UINT8 reference, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
-    char pathname[100];
-    BOOL r;
-    UINT32 Size = pdwSize ? *pdwSize : 0;
+	char pathname[100];
+	BOOL r;
+	UINT32 Size = pdwSize ? *pdwSize : 0;
 
-    snprintf(pathname, sizeof(pathname), "%s/%s/Region/%04X%s", cnxt_nvmdir_static, pDevNode->hwProfile, countryt35, name);
-    r = NVM_ReadFile(pathname, pBuf, pdwSize);
-    if(!r && reference != 0xFF) {
-	snprintf(pathname, sizeof(pathname), "%s/%s/Profile/%04X%s", cnxt_nvmdir_static, pDevNode->hwProfile, reference, name);
-	if(pdwSize)
-	    *pdwSize = Size;
-	return NVM_ReadFile(pathname, pBuf, pdwSize);
-    } else
+	snprintf(pathname, sizeof(pathname), "%s/%s/Region/%04X%s", cnxt_nvmdir_static, pDevNode->hwProfile, countryt35, name);
+	r = NVM_ReadFile(pathname, pBuf, pdwSize);
+	if(!r && reference != 0xFF) {
+		snprintf(pathname, sizeof(pathname), "%s/%s/Profile/%04X%s", cnxt_nvmdir_static, pDevNode->hwProfile, reference, name);
+		if(pdwSize)
+		*pdwSize = Size;
+		return NVM_ReadFile(pathname, pBuf, pdwSize);
+	} else
 	return r;
 }
 
 static BOOL
 NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStruct *ctryPrms)
 {
-    UINT32 dwSize;
-    UINT8 Reference = 0xFF;
+	UINT32 dwSize;
+	UINT8 Reference = 0xFF;
 	char *nameTxLevel, *nameRelays;
 
-    memset(ctryPrms, 0, sizeof(ctryPrms));
+	memset(ctryPrms, 0, sizeof(ctryPrms));
 
-    //printk(KERN_DEBUG "%s: pDevNode=%p countryt35=%x daaType=%d\n", __FUNCTION__, pDevNode, countryt35, daaType);
+	//printk(KERN_DEBUG "%s: pDevNode=%p countryt35=%x daaType=%d\n", __FUNCTION__, pDevNode, countryt35, daaType);
 
-    ctryPrms->T35Code = countryt35;
+	ctryPrms->T35Code = countryt35;
 
 #if !TARGET_HCF_FAMILY /* HSF */
-    dwSize = sizeof (Reference);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/REFERENCE", &Reference, &dwSize);
+	dwSize = sizeof (Reference);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/REFERENCE", &Reference, &dwSize);
 #endif
 
-    dwSize = sizeof (ctryPrms->cInter);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "_NAME", &ctryPrms->cInter, &dwSize);
+	dwSize = sizeof (ctryPrms->cInter);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "_NAME", &ctryPrms->cInter, &dwSize);
 
-    dwSize = sizeof (ctryPrms->cIntCode);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/INTCODE", &ctryPrms->cIntCode, &dwSize);
+	dwSize = sizeof (ctryPrms->cIntCode);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/INTCODE", &ctryPrms->cIntCode, &dwSize);
 
 #if !TARGET_HCF_FAMILY
 	if((daaType == SI3054_DAA) || (daaType == SI3055_DAA)) {
@@ -848,8 +854,8 @@ NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStru
 		nameTxLevel = "/TXLEVEL";
 	}
 
-    dwSize = sizeof (ctryPrms->Txlevel);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, nameTxLevel, &ctryPrms->Txlevel, &dwSize);
+	dwSize = sizeof (ctryPrms->Txlevel);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, nameTxLevel, &ctryPrms->Txlevel, &dwSize);
 
 	if((daaType == SI3054_DAA) || (daaType == SI3055_DAA)) {
 		int LowDialLevel = ctryPrms->Txlevel.LowDialLevel;
@@ -866,85 +872,85 @@ NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStru
 		}
 	}
 
-    dwSize = sizeof (ctryPrms->Relays);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, nameRelays, &ctryPrms->Relays, &dwSize);
+	dwSize = sizeof (ctryPrms->Relays);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, nameRelays, &ctryPrms->Relays, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Pulse);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/PULSE", &ctryPrms->Pulse, &dwSize);
+	dwSize = sizeof (ctryPrms->Pulse);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/PULSE", &ctryPrms->Pulse, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Ring);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/RING", &ctryPrms->Ring, &dwSize);
+	dwSize = sizeof (ctryPrms->Ring);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/RING", &ctryPrms->Ring, &dwSize);
 
-    dwSize = sizeof (ctryPrms->SRegLimits);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/SREG", &ctryPrms->SRegLimits, &dwSize);
+	dwSize = sizeof (ctryPrms->SRegLimits);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/SREG", &ctryPrms->SRegLimits, &dwSize);
 
-    dwSize = sizeof (ctryPrms->DTMF);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, (daaType == CAESAR) ? "/SMART_DTMF" : "/DTMF", &ctryPrms->DTMF, &dwSize);
+	dwSize = sizeof (ctryPrms->DTMF);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, (daaType == CAESAR) ? "/SMART_DTMF" : "/DTMF", &ctryPrms->DTMF, &dwSize);
 
-    /* FILTER: was commented out on HSF */
+	/* FILTER: was commented out on HSF */
 	/* MARCXXX: Filter.Primary, Filter.Alternate, Filter.VoiceToneACallProgress/FilterVoiceToneA */
-    dwSize = sizeof (ctryPrms->Filter);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/FILTER", &ctryPrms->Filter, &dwSize);
+	dwSize = sizeof (ctryPrms->Filter);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/FILTER", &ctryPrms->Filter, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Threshold);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, (daaType == CAESAR) ? "/SMART_THRESHOLD" : "/THRESHOLD", &ctryPrms->Threshold, &dwSize);
+	dwSize = sizeof (ctryPrms->Threshold);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, (daaType == CAESAR) ? "/SMART_THRESHOLD" : "/THRESHOLD", &ctryPrms->Threshold, &dwSize);
 
-    dwSize = sizeof (ctryPrms->RLSD);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/RLSD", &ctryPrms->RLSD, &dwSize);
+	dwSize = sizeof (ctryPrms->RLSD);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/RLSD", &ctryPrms->RLSD, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Tone);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TONE", &ctryPrms->Tone, &dwSize);
+	dwSize = sizeof (ctryPrms->Tone);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TONE", &ctryPrms->Tone, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Timing);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TIMING", &ctryPrms->Timing, &dwSize);
+	dwSize = sizeof (ctryPrms->Timing);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TIMING", &ctryPrms->Timing, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Cadence);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CADENCE", &ctryPrms->Cadence, &dwSize);
+	dwSize = sizeof (ctryPrms->Cadence);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CADENCE", &ctryPrms->Cadence, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Blacklisting);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/BLACKLISTING", &ctryPrms->Blacklisting, &dwSize);
+	dwSize = sizeof (ctryPrms->Blacklisting);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/BLACKLISTING", &ctryPrms->Blacklisting, &dwSize);
 
-    dwSize = sizeof (ctryPrms->CallerID);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALLERID", &ctryPrms->CallerID, &dwSize);
+	dwSize = sizeof (ctryPrms->CallerID);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALLERID", &ctryPrms->CallerID, &dwSize);
 
-    dwSize = sizeof (ctryPrms->CallerID2);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALLERID2", &ctryPrms->CallerID2, &dwSize);
+	dwSize = sizeof (ctryPrms->CallerID2);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALLERID2", &ctryPrms->CallerID2, &dwSize);
 
-    dwSize = sizeof (ctryPrms->Flags);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/FLAGS", &ctryPrms->Flags, &dwSize);
+	dwSize = sizeof (ctryPrms->Flags);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/FLAGS", &ctryPrms->Flags, &dwSize);
 
-    dwSize = sizeof (ctryPrms->AgressSpeedIndex);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/SPEEDADJUST", &ctryPrms->AgressSpeedIndex, &dwSize);
+	dwSize = sizeof (ctryPrms->AgressSpeedIndex);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/SPEEDADJUST", &ctryPrms->AgressSpeedIndex, &dwSize);
 
 #if 0
-    dwSize = sizeof (ctryPrms->PulseAbort);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/PULSE_ABORT", &ctryPrms->PulseAbort, &dwSize);
+	dwSize = sizeof (ctryPrms->PulseAbort);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/PULSE_ABORT", &ctryPrms->PulseAbort, &dwSize);
 #endif
 
-    dwSize = sizeof (ctryPrms->CallWaitingParms);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALL_WAITING", &ctryPrms->CallWaitingParms, &dwSize);
+	dwSize = sizeof (ctryPrms->CallWaitingParms);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/CALL_WAITING", &ctryPrms->CallWaitingParms, &dwSize);
 
-    dwSize = sizeof (ctryPrms->V92Control);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/V92_CONTROL", &ctryPrms->V92Control, &dwSize);
+	dwSize = sizeof (ctryPrms->V92Control);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/V92_CONTROL", &ctryPrms->V92Control, &dwSize);
 
 #if 0
-    dwSize = sizeof (ctryPrms->ToneParams);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TONEPARAMS", &ctryPrms->ToneParams, &dwSize);
+	dwSize = sizeof (ctryPrms->ToneParams);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/TONEPARAMS", &ctryPrms->ToneParams, &dwSize);
 #endif
 
 #if !TARGET_HCF_FAMILY
-    dwSize = sizeof (ctryPrms->OgcParams);
-    NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/V92_OGC", &ctryPrms->OgcParams, &dwSize);
+	dwSize = sizeof (ctryPrms->OgcParams);
+	NVM_ReadCountryParm(pDevNode, countryt35, Reference, "/V92_OGC", &ctryPrms->OgcParams, &dwSize);
 #endif
 
-    return TRUE;
+	return TRUE;
 }
 
 
 static
 BOOL isDynamicParm(CFGMGR_CODE eCode)
 {
-    switch(eCode) {
+	switch(eCode) {
 	case CFGMGR_PROFILE_STORED:
 	case CFGMGR_POUND_UD:
 	case CFGMGR_BLACK_LIST:
@@ -965,160 +971,160 @@ BOOL isDynamicParm(CFGMGR_CODE eCode)
 	case CFGMGR_LICENSE_OWNER:
 	case CFGMGR_LICENSE_KEY:
 	case CFGMGR_LICENSE_STATUS:
-	    return TRUE;
+		return TRUE;
 	default:
-	    return FALSE;
-    }
+		return FALSE;
+	}
 }
 
 __shimcall__
 COM_STATUS
 NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
 {
-    POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
-    BOOL res;
-    UINT32 Size;
+	POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
+	BOOL res;
+	UINT32 Size;
 
-    //printk(KERN_DEBUG "%s: pDevNode=%p CfgCode=%s Size=%p\n", __FUNCTION__, pDevNode, eCodeStr(eCode), pdwSize);
+	//printk(KERN_DEBUG "%s: pDevNode=%p CfgCode=%s Size=%p\n", __FUNCTION__, pDevNode, eCodeStr(eCode), pdwSize);
 
-    if(isDynamicParm(eCode)) {
-	ASSERT(pdwSize);
+	if(isDynamicParm(eCode)) {
+		ASSERT(pdwSize);
 
-	Size = *pdwSize;
+		Size = *pdwSize;
 
-	res = NVM_ReadDynamicParm(pDevNode, eCodeStr(eCode), pBuf, pdwSize);
-	if(!res) {
-	    if (eCode == CFGMGR_COUNTRY_CODE) {
-		ASSERT(Size == sizeof(g_DefaultCountryCode));
-		if(Size == sizeof(g_DefaultCountryCode)) {
-			memcpy(pBuf, &g_DefaultCountryCode, sizeof(g_DefaultCountryCode));
-			*pdwSize = sizeof(g_DefaultCountryCode);
-			res = TRUE;
+		res = NVM_ReadDynamicParm(pDevNode, eCodeStr(eCode), pBuf, pdwSize);
+		if(!res) {
+			if (eCode == CFGMGR_COUNTRY_CODE) {
+				ASSERT(Size == sizeof(g_DefaultCountryCode));
+				if(Size == sizeof(g_DefaultCountryCode)) {
+					memcpy(pBuf, &g_DefaultCountryCode, sizeof(g_DefaultCountryCode));
+					*pdwSize = sizeof(g_DefaultCountryCode);
+					res = TRUE;
+				}
+			} else if (eCode == CFGMGR_PROFILE_STORED) {
+				ASSERT(Size == sizeof(g_FactoryProfile));
+				if(Size == sizeof(g_FactoryProfile)) {
+					memcpy(pBuf, &g_FactoryProfile, sizeof(g_FactoryProfile));
+					*pdwSize = sizeof(g_FactoryProfile);
+					res = TRUE;
+				}
+			}
 		}
-	    } else if (eCode == CFGMGR_PROFILE_STORED) {
-		ASSERT(Size == sizeof(g_FactoryProfile));
-		if(Size == sizeof(g_FactoryProfile)) {
-			memcpy(pBuf, &g_FactoryProfile, sizeof(g_FactoryProfile));
-			*pdwSize = sizeof(g_FactoryProfile);
-			res = TRUE;
-		}
-	    }
-	}
-    } else if(eCode == CFGMGR_COUNTRY_STRUCT) {
+	} else if(eCode == CFGMGR_COUNTRY_STRUCT) {
 #if TARGET_HCF_FAMILY
-	res = NVM_ReadCountry(pDevNode, SIMPLE_DAA, (int)pdwSize, pBuf);
+		res = NVM_ReadCountry(pDevNode, SIMPLE_DAA, (int)pdwSize, pBuf);
 #else
-	BYTE daaType = SIMPLE_DAA;
+		BYTE daaType = SIMPLE_DAA;
 
-	Size = sizeof(daaType);
-	NVM_Read (hNVM, CFGMGR_OEM_DAATYPE, &daaType, &Size);
-	res = NVM_ReadCountry(pDevNode, daaType, (int)(unsigned long)pdwSize, pBuf);
+		Size = sizeof(daaType);
+		NVM_Read (hNVM, CFGMGR_OEM_DAATYPE, &daaType, &Size);
+		res = NVM_ReadCountry(pDevNode, daaType, (int)(unsigned long)pdwSize, pBuf);
 #endif
-    } else {
-	Size = *pdwSize;
+	} else {
+		Size = *pdwSize;
 
-	res = NVM_ReadStaticParm(pDevNode, eCodeStr(eCode), pBuf, pdwSize);
-	if(!res && (eCode == CFGMGR_PROFILE_FACTORY)) {
-	    ASSERT(Size == sizeof(g_FactoryProfile));
-	    if(Size == sizeof(g_FactoryProfile)) {
-		memcpy(pBuf, &g_FactoryProfile, sizeof(g_FactoryProfile));
-		*pdwSize = sizeof(g_FactoryProfile);
-		res = TRUE;
-	    }
+		res = NVM_ReadStaticParm(pDevNode, eCodeStr(eCode), pBuf, pdwSize);
+		if(!res && (eCode == CFGMGR_PROFILE_FACTORY)) {
+			ASSERT(Size == sizeof(g_FactoryProfile));
+			if(Size == sizeof(g_FactoryProfile)) {
+				memcpy(pBuf, &g_FactoryProfile, sizeof(g_FactoryProfile));
+				*pdwSize = sizeof(g_FactoryProfile);
+				res = TRUE;
+			}
+		}
 	}
-    }
 
-    return res ? COM_STATUS_SUCCESS : COM_STATUS_VALUE_NOT_FOUND;
+	return res ? COM_STATUS_SUCCESS : COM_STATUS_VALUE_NOT_FOUND;
 }
 
 __shimcall__
 COM_STATUS
 NVM_Write (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, PUINT32 pdwSize)
 {
-    POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
-    char pathname[100];
+	POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
+	char pathname[100];
 
-    //printk(KERN_DEBUG "%s: pDevNode=%p CfgCode=%s Size=%ld\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
+	//printk(KERN_DEBUG "%s: pDevNode=%p CfgCode=%s Size=%ld\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
 	if(pDevNode->hwSuspendInProgress)
-		return COM_STATUS_FAIL;
+	return COM_STATUS_FAIL;
 
-    if(!isDynamicParm(eCode)) {
-    	printk(KERN_WARNING "%s: pDevNode=%p: saving static parameter, CfgCode=%s Size=%d\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
-    }
+	if(!isDynamicParm(eCode)) {
+		printk(KERN_WARNING "%s: pDevNode=%p: saving static parameter, CfgCode=%s Size=%d\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
+	}
 
-    snprintf(pathname, sizeof(pathname), "%s/%d-%s/%s", cnxt_nvmdir_dynamic, pDevNode->hwInstNum, pDevNode->hwInstName, eCodeStr(eCode));
+	snprintf(pathname, sizeof(pathname), "%s/%d-%s/%s", cnxt_nvmdir_dynamic, pDevNode->hwInstNum, pDevNode->hwInstName, eCodeStr(eCode));
 
-    return NVM_WriteFile(pathname, pBuf, *pdwSize, nvmFormat(eCode), pDevNode->hwSuspendInProgress) ? COM_STATUS_SUCCESS : COM_STATUS_FAIL;
+	return NVM_WriteFile(pathname, pBuf, *pdwSize, nvmFormat(eCode), pDevNode->hwSuspendInProgress) ? COM_STATUS_SUCCESS : COM_STATUS_FAIL;
 }
 
 __shimcall__
 HANDLE
 NVM_Open (ULONG_PTR dwDevNode)
 {
-    POS_DEVNODE pDevNode = (POS_DEVNODE)dwDevNode;
-    char instname[100];
-    int err;
-    char hwProfile[sizeof(pDevNode->hwProfile)];
-    UINT32 uiSize;
-    nvmnewinst_t *newinst;
-    
-    snprintf(instname, sizeof(instname), "%d-%s", pDevNode->hwInstNum, pDevNode->hwInstName);
+	POS_DEVNODE pDevNode = (POS_DEVNODE)dwDevNode;
+	char instname[100];
+	int err;
+	char hwProfile[sizeof(pDevNode->hwProfile)];
+	UINT32 uiSize;
+	nvmnewinst_t *newinst;
+	
+	snprintf(instname, sizeof(instname), "%d-%s", pDevNode->hwInstNum, pDevNode->hwInstName);
 
-    err = NVM_NewInstance(instname);
+	err = NVM_NewInstance(instname);
 
-    if(err) {
-    	printk(KERN_WARNING "%s: cannot create instance %s: err=%d will retry later...\n", __FUNCTION__, instname, err);
-	newinst = OsAllocate(sizeof(nvmnewinst_t));
-	if (!newinst)
+	if(err) {
+		printk(KERN_WARNING "%s: cannot create instance %s: err=%d will retry later...\n", __FUNCTION__, instname, err);
+		newinst = OsAllocate(sizeof(nvmnewinst_t));
+		if (!newinst)
 		return NULL;
-	newinst->instname = OsAllocate(strlen(instname) + 1);
-	if (!newinst->instname) {
-		OsFree(newinst);
-		return NULL;
+		newinst->instname = OsAllocate(strlen(instname) + 1);
+		if (!newinst->instname) {
+			OsFree(newinst);
+			return NULL;
+		}
+		strcpy(newinst->instname, instname);
+
+		down(&nvmelem_writelist_sem);
+		list_add_tail(&newinst->link, &nvm_newinst_list);
+		up(&nvmelem_writelist_sem);
 	}
-	strcpy(newinst->instname, instname);
 
-	down(&nvmelem_writelist_sem);
-	list_add_tail(&newinst->link, &nvm_newinst_list);
-	up(&nvmelem_writelist_sem);
-    }
+	uiSize = sizeof(hwProfile);
+	if(NVM_Read(pDevNode, CFGMGR_HARDWARE_PROFILE, hwProfile, &uiSize) == COM_STATUS_SUCCESS) {
+		strncpy(pDevNode->hwProfile, hwProfile, sizeof(pDevNode->hwProfile));
+		pDevNode->hwProfile[sizeof(pDevNode->hwProfile)-1] = '\0';
+	}
 
-    uiSize = sizeof(hwProfile);
-    if(NVM_Read(pDevNode, CFGMGR_HARDWARE_PROFILE, hwProfile, &uiSize) == COM_STATUS_SUCCESS) {
-	strncpy(pDevNode->hwProfile, hwProfile, sizeof(pDevNode->hwProfile));
-	pDevNode->hwProfile[sizeof(pDevNode->hwProfile)-1] = '\0';
-    }
+	if(!strncmp(pDevNode->hwInstName, "PCI", 3)) {
+		UINT16 pci_id;
+		UINT32 size;
 
-    if(!strncmp(pDevNode->hwInstName, "PCI", 3)) {
-	UINT16 pci_id;
-	UINT32 size;
+		size = sizeof(pci_id);
+		pci_id = ((struct pci_dev *)pDevNode->hwDev)->device;
+		NVM_Write(pDevNode, CFGMGR_PCI_DEVICE_ID, &pci_id, &size);
 
-    	size = sizeof(pci_id);
-    	pci_id = ((struct pci_dev *)pDevNode->hwDev)->device;
-    	NVM_Write(pDevNode, CFGMGR_PCI_DEVICE_ID, &pci_id, &size);
-
-    	size = sizeof(pci_id);
-    	pci_id = ((struct pci_dev *)pDevNode->hwDev)->vendor;
-    	NVM_Write(pDevNode, CFGMGR_PCI_VENDOR_ID, &pci_id, &size);
-    }
-    return pDevNode;
+		size = sizeof(pci_id);
+		pci_id = ((struct pci_dev *)pDevNode->hwDev)->vendor;
+		NVM_Write(pDevNode, CFGMGR_PCI_VENDOR_ID, &pci_id, &size);
+	}
+	return pDevNode;
 }
 
 __shimcall__
 COM_STATUS
 NVM_Close (HANDLE hNVM)
 {
-    //printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
+	//printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
 
-    NVM_WriteFlushList(TRUE);
+	NVM_WriteFlushList(TRUE);
 
-    return COM_STATUS_SUCCESS;
+	return COM_STATUS_SUCCESS;
 }
 
 void
 OsNvmExit(void)
 {
-    //printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
+	//printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
 
-    NVM_WriteFlushList(FALSE);
+	NVM_WriteFlushList(FALSE);
 }

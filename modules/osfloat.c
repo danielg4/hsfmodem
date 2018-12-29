@@ -11,8 +11,10 @@
 #include "framewrk.h"
 #include "osservices.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
-#include <asm/i387.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
+	#include <asm/fpu/api.h>
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
+	#include <asm/i387.h>
 #endif
 
 #if defined(cpu_has_xmm) && !defined(load_mxcsr)
@@ -28,7 +30,9 @@ typedef struct {
 	unsigned long used;
 #ifdef FOUND_THREAD_XSTATE
 	union thread_xstate i387;
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)	
+	union fpregs_state i387;
+#else	
 	union i387_union i387;
 #endif
 	unsigned int cr0;
@@ -42,14 +46,15 @@ static DEFINE_SPINLOCK(fpstates_lock);
 static spinlock_t fpstates_lock __attribute__((unused)) = SPIN_LOCK_UNLOCKED;
 #endif
 
+//im just thinking ....
 static inline void
 hsf_kernel_fpu_begin(fpstate_t *fpstate)
 {
 	fpstate->cr0 = read_cr0();
 	clts();
-#ifdef __x86_64__
-	asm volatile( "rex64/fxsave %0 ; fnclex"
-		: "=m" (fpstate->i387.fxsave) );
+
+	#ifdef __x86_64__
+	asm volatile( "rex64/fxsave %0 ; fnclex"	: "=m" (fpstate->i387.fxsave) );
 #else
 #ifdef cpu_has_fxsr
 	if ( cpu_has_fxsr ) {

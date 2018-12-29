@@ -104,7 +104,7 @@ again:
 #endif
 
 	filp = filp_open(path, flags, creatmode);
-
+	//printk(KERN_INFO "%s(\"%s\", \"%s\") %d\n", __FUNCTION__, path, mode,IS_ERR(filp) ? 1 : 0); 
 #ifdef FOUND_CURRENT_CRED
 	error = set_current_fsuid(origfsuid);
 	if (error) {
@@ -121,8 +121,9 @@ again:
 		filp = NULL;
 		goto out;
 	}
-
-	inode = filp->f_dentry->d_inode;
+	//fixed by lino
+	//inode = filp->f_dentry->d_inode;
+	inode = filp->f_inode;
 #if 0
 	if (inode->i_nlink > 1) {
 		error = -EACCES;
