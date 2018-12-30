@@ -40,60 +40,58 @@ static int set_current_fsuid(uid_t fsuid)
 }
 #endif
 
-__shimcall__
-FILE *
-OsFOpen (const char *path, const char *mode, int *errp)
+__shimcall__ FILE * OsFOpen (const char *path, const char *mode, int *errp)
 {
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0) )
 	kuid_t origfsuid;
 #else
 	uid_t origfsuid;
 #endif
+
 	FILE *filp;
 	int error = 0;
 	int flags, creatmode = 0, do_trunc = 0;
 	struct inode * inode;
 
 	ASSERT(OsContextAllowsSleeping());
-
 	if(!path || !mode) {
 		error = -EIO;
 		filp = NULL;
 		goto out;
 	}
-
 	//printk(KERN_INFO "%s(\"%s\", \"%s\")\n", __FUNCTION__, path, mode); //KDB_ENTER();
 
-	if(!strcmp(mode, "r") || !strcmp(mode, "rb")) {
+	if(!strcmp(mode, "r") || !strcmp(mode, "rb")) 
 		flags = O_RDONLY;
-	} else if(!strcmp(mode, "r+") || !strcmp(mode, "r+b") || !strcmp(mode, "rb+")) {
+	else if(!strcmp(mode, "r+") || !strcmp(mode, "r+b") || !strcmp(mode, "rb+"))
 		flags = O_RDWR;
-	} else if(!strcmp(mode, "w") || !strcmp(mode, "wb")) {
+	else if(!strcmp(mode, "w") || !strcmp(mode, "wb")){
 		flags = O_WRONLY | O_CREAT;
 		do_trunc = 1;
 		creatmode = 0600;
-	} else if(!strcmp(mode, "w+") || !strcmp(mode, "w+b") || !strcmp(mode, "wb+")) {
+	}
+	else if(!strcmp(mode, "w+") || !strcmp(mode, "w+b") || !strcmp(mode, "wb+")){
 		flags = O_RDWR | O_CREAT;
 		do_trunc = 1;
 		creatmode = 0600;
-	} else {
+	}
+	else {
 		error = -ENOSYS; // not implemented
 		filp = NULL;
 		goto out;
 	}
-
 #if 0
 	flags |= O_NOFOLLOW;
 #endif
 
 again:
 #ifdef FOUND_CURRENT_CRED
-	origfsuid = current_fsuid();
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0) )
-	error = set_current_fsuid(make_kuid(current_user_ns(), 0));
-#else
-	error = set_current_fsuid(0);
-#endif
+		origfsuid = current_fsuid();
+	#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0) )
+		error = set_current_fsuid(make_kuid(current_user_ns(), 0));
+	#else
+		error = set_current_fsuid(0);
+	#endif
 	if (error) {
 		filp = NULL;
 		goto out;
@@ -101,10 +99,11 @@ again:
 #else
 	origfsuid = current->fsuid;
 	current->fsuid = 0;
-#endif
-
-	filp = filp_open(path, flags, creatmode);
-	//printk(KERN_INFO "%s(\"%s\", \"%s\") %d\n", __FUNCTION__, path, mode,IS_ERR(filp) ? 1 : 0); 
+#endif   
+	filp = filp_open(path, flags, creatmode);	
+	
+	//set_fs(oldfs);
+	
 #ifdef FOUND_CURRENT_CRED
 	error = set_current_fsuid(origfsuid);
 	if (error) {
@@ -115,14 +114,11 @@ again:
 #else
 	current->fsuid = origfsuid;
 #endif
-
 	if (IS_ERR(filp)) {
 		error = PTR_ERR(filp);
 		filp = NULL;
 		goto out;
 	}
-	//fixed by lino
-	//inode = filp->f_dentry->d_inode;
 	inode = filp->f_inode;
 #if 0
 	if (inode->i_nlink > 1) {
@@ -133,7 +129,6 @@ again:
 		goto out;
 	}
 #endif
-
 	if (!(S_ISREG(inode->i_mode))) {
 		error = -EACCES;
 		printk(KERN_ERR "%s(\"%s\", \"%s\"): not a regular file\n", __FUNCTION__, path, mode);
@@ -141,14 +136,14 @@ again:
 		filp = NULL;
 		goto out;
 	}
-
-	if (!filp->f_op || !filp->f_op->read || !filp->f_op->write) {
+#if ( LINUX_VERSION_CODE <= KERNEL_VERSION(4,0,0) )
+	if (!filp->f_op || (!filp->f_op->read && !filp->f_op->write)) {		
 		error = -EIO;
 		filp_close(filp, NULL);
 		filp = NULL;
 		goto out;
 	}
-
+#endif	
 	if(do_trunc) {
 		do_trunc = 0;
 		filp_close(filp, NULL);
@@ -162,79 +157,77 @@ out:
 		*errp = error;
 	else if(error && (error != -ENOENT))
 		printk(KERN_ERR "%s(\"%s\", \"%s\"): error %d\n", __FUNCTION__, path, mode, error);
-
-	if (filp) {
-		filp->f_pos = 0;            /* start offset */
-	}
-
+	//printk(KERN_INFO "%s %d\n", __FUNCTION__, lino); //KDB_ENTER();	
+	
+	if (filp)
+		filp->f_pos = 0; 
 	return filp;
 }
 
-__shimcall__
-int
-OsFClose(FILE *filp)
+__shimcall__ int OsFClose(FILE *filp)
 {
 	//printk(KERN_INFO "%s(%p)\n", __FUNCTION__, filp); //KDB_ENTER();
-	if(!IS_ERR(filp)) {
+	if(!IS_ERR(filp))
 		filp_close(filp, NULL);
-	}
 	return 0;
 }
 
-__shimcall__
-size_t
-OsFRead(void *ptr, size_t size, size_t nmemb, FILE *filp, int *errno_p)
+__shimcall__ size_t OsFRead(void *ptr, size_t size, size_t nmemb, FILE *filp, int *errno_p)
 {
 	int bytes;
 
 	ASSERT(OsContextAllowsSleeping());
 	//printk(KERN_INFO "%s(ptr=%p, size=%d, nmemb=%d, filp=%p)\n", __FUNCTION__, ptr, size, nmemb, filp); //KDB_ENTER();
-	if(IS_ERR(filp)) {
+	if(IS_ERR(filp))
 		bytes = -EINVAL;
-	} else {
+	else {
 		mm_segment_t oldfs;
 
 		oldfs = get_fs();
 		set_fs(get_ds());
-		bytes = filp->f_op->read(filp, ptr, size*nmemb, &filp->f_pos);
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )		
+	bytes = vfs_read(filp, ptr, size*nmemb, &filp->f_pos);
+#else
+	bytes = filp->f_op->read(filp, ptr, size*nmemb, &filp->f_pos);
+#endif				
 		set_fs(oldfs);
 	}
-
-	if (errno_p && bytes < 0) *errno_p = -(bytes);
-
+	if (errno_p && bytes < 0) 
+		*errno_p = -(bytes);
 	if(bytes < 0) {
 		printk(KERN_ERR "%s(filp %p): error %d\n", __FUNCTION__, filp, bytes);
 		return 0;
-	} else
-		return bytes / size;
+	} 
+	return bytes / size;
 }
 
-__shimcall__
-size_t
-OsFWrite(const void *ptr, size_t size, size_t nmemb, FILE *filp, int *errno_p)
+__shimcall__ size_t OsFWrite(const void *ptr, size_t size, size_t nmemb, FILE *filp, int *errno_p)
 {
 	int bytes;
 
 	ASSERT(OsContextAllowsSleeping());
 	//printk(KERN_INFO "%s(ptr=%p, size=%d, nmemb=%d, filp=%p)\n", __FUNCTION__, ptr, size, nmemb, filp); //KDB_ENTER();
-	if(IS_ERR(filp)) {
+	if(IS_ERR(filp))
 		bytes = -EINVAL;
-	} else {
+	else {
 		mm_segment_t oldfs;
 
 		oldfs = get_fs();
 		set_fs(get_ds());
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )				
+		bytes = vfs_write(filp, ptr, size*nmemb, &filp->f_pos);
+#else
 		bytes = filp->f_op->write(filp, ptr, size*nmemb, &filp->f_pos);
+#endif		
 		set_fs(oldfs);
 	}
-
-	if (errno_p && bytes < 0) *errno_p = -(bytes);
-
+	if (errno_p && bytes < 0) 
+		*errno_p = -(bytes);
 	if(bytes < 0) {
 		printk(KERN_ERR "%s(filp %p): error %d\n", __FUNCTION__, filp, bytes);
 		return 0;
-	} else
-		return bytes / size;
+	} 
+	return bytes / size;
 }
 
 
@@ -267,9 +260,7 @@ static loff_t default_llseek(struct file *file, loff_t offset, int origin)
 }
 #endif
 
-__shimcall__
-int
-OsFSeek(FILE *filp, long offset, int origin)
+__shimcall__ int OsFSeek(FILE *filp, long offset, int origin)
 {
 	loff_t (*fn)(struct file *, loff_t, int);
 	loff_t retval;

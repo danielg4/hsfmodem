@@ -436,8 +436,7 @@ static BOOL NVM_WriteListAppend(const char *pathname, PVOID pBuf, UINT32 dwSize,
 
 
 /* Write pBuf to file as sequence of two-digit hex bytes */
-static BOOL
-NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat)
+static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat)
 {
 	char buf[MAX_OEM_STR_LEN + 4], *dp;
 	unsigned char *p;
@@ -535,28 +534,14 @@ err:
 	return FALSE;
 }
 
-
-static int
-NVM_NewInstance(char *instname)
+static int NVM_NewInstance(char *instname)
 {
 	char *argv[] = { CNXTSBINDIR"/"CNXTTARGET"config", "--auto", "--newinstance", instname, NULL };
 	char *envp[] = { "HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin:"CNXTSBINDIR, NULL };
-	char buf[1024];
-	int i;
-	
-	buf[0]=0;
-	for(i=0;argv[i] != NULL;i++)
-		strcat(buf,argv[i]);
-	
-	printk(KERN_DEBUG"%s: instname=%s\n", __FUNCTION__, buf);
-
 	return OsForkWait(argv[0], argv, envp);
 }
 
-
-__shimcall__
-void
-NVM_WriteFlushList(BOOL write)
+__shimcall__ void NVM_WriteFlushList(BOOL write)
 {
 	down(&nvmelem_writelist_sem);
 
@@ -613,8 +598,7 @@ done:
 	up(&nvmelem_writelist_sem);
 }
 
-static BOOL
-NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat, BOOL suspendInProgress)
+static BOOL NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat, BOOL suspendInProgress)
 {
 	int err;
 	FILE *file;
@@ -625,11 +609,8 @@ NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT n
 			up(&nvmelem_writelist_sem);
 			return FALSE;
 		}
-
 		up(&nvmelem_writelist_sem);
-
 		NVM_WriteFlushList(TRUE);
-
 		return TRUE;
 	}
 
@@ -643,7 +624,6 @@ NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT n
 			up(&nvmelem_writelist_sem);
 			return res;
 		}
-
 		up(&nvmelem_writelist_sem);
 		printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
 		return FALSE;
@@ -1037,29 +1017,21 @@ NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
 	return res ? COM_STATUS_SUCCESS : COM_STATUS_VALUE_NOT_FOUND;
 }
 
-__shimcall__
-COM_STATUS
-NVM_Write (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, PUINT32 pdwSize)
+__shimcall__ COM_STATUS NVM_Write (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, PUINT32 pdwSize)
 {
 	POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
 	char pathname[100];
 
 	//printk(KERN_DEBUG "%s: pDevNode=%p CfgCode=%s Size=%ld\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
 	if(pDevNode->hwSuspendInProgress)
-	return COM_STATUS_FAIL;
-
-	if(!isDynamicParm(eCode)) {
-		printk(KERN_WARNING "%s: pDevNode=%p: saving static parameter, CfgCode=%s Size=%d\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);
-	}
-
+		return COM_STATUS_FAIL;
+	if(!isDynamicParm(eCode))
+		printk(KERN_WARNING "%s: pDevNode=%p: saving static parameter, CfgCode=%s Size=%d\n", __FUNCTION__, pDevNode, eCodeStr(eCode), *pdwSize);	
 	snprintf(pathname, sizeof(pathname), "%s/%d-%s/%s", cnxt_nvmdir_dynamic, pDevNode->hwInstNum, pDevNode->hwInstName, eCodeStr(eCode));
-
 	return NVM_WriteFile(pathname, pBuf, *pdwSize, nvmFormat(eCode), pDevNode->hwSuspendInProgress) ? COM_STATUS_SUCCESS : COM_STATUS_FAIL;
 }
 
-__shimcall__
-HANDLE
-NVM_Open (ULONG_PTR dwDevNode)
+__shimcall__ HANDLE NVM_Open (ULONG_PTR dwDevNode)
 {
 	POS_DEVNODE pDevNode = (POS_DEVNODE)dwDevNode;
 	char instname[100];
@@ -1110,9 +1082,7 @@ NVM_Open (ULONG_PTR dwDevNode)
 	return pDevNode;
 }
 
-__shimcall__
-COM_STATUS
-NVM_Close (HANDLE hNVM)
+__shimcall__ COM_STATUS NVM_Close (HANDLE hNVM)
 {
 	//printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
 
@@ -1121,8 +1091,7 @@ NVM_Close (HANDLE hNVM)
 	return COM_STATUS_SUCCESS;
 }
 
-void
-OsNvmExit(void)
+void OsNvmExit(void)
 {
 	//printk(KERN_DEBUG "%s: hNVM=%p\n", __FUNCTION__, hNVM);
 

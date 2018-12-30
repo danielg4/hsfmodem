@@ -2062,9 +2062,9 @@ static int uart_match_port(struct uart_port *port1, struct uart_port *port2)
 static inline void uart_report_port(struct uart_driver *drv, struct uart_port *port)
 {
 	if(strchr(drv->normal_name, '%'))
-	printk(drv->normal_name, port->line);
+		printk(drv->normal_name, port->line);
 	else
-	printk("%s%d", drv->normal_name, port->line);
+		printk("%s%d", drv->normal_name, port->line);
 	if(port->iobase || port->mapbase || port->irq) {
 		printk(" at ");
 		switch (port->iotype) {
@@ -2147,7 +2147,7 @@ SERIALCORE_EXPORT int uart_register_port(struct uart_driver *drv, struct uart_po
 	up(&port_sem);
 
 	if (!state)
-	return -ENOSPC;
+		return -ENOSPC;
 
 	/*
 	* If we find a port that matches this one, and it appears to
@@ -2185,7 +2185,7 @@ SERIALCORE_EXPORT int uart_register_port(struct uart_driver *drv, struct uart_po
 		* the console if we have one.
 		*/
 		if (!drv->cons || state->port->line != drv->cons->index)
-		pm_send(state->pm, PM_SUSPEND, (void *)3);
+			pm_send(state->pm, PM_SUSPEND, (void *)3);
 	}
 #endif
 

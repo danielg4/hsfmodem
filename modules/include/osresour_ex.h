@@ -77,8 +77,8 @@ typedef struct tagOS_DEVNODE {
 	UINT32 *pci_state;
 
     struct cnxt_irq_t {
-	__kernelcall__ OS_IRQRETURN_T (*isr)(int irq, void *devidp, void *unused);
-	void *devid;
+		__kernelcall__ OS_IRQRETURN_T (*isr)(int irq, void *devidp, void *unused);
+		void *devid;
     } irq_info;
 } OS_DEVNODE, *POS_DEVNODE;
 

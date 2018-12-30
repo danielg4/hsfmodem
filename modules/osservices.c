@@ -701,8 +701,7 @@ static int cnxt_thread(OSTHRD *osthrd)
 #endif
 }
 
-static void
-OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
+static void OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
 {
 	memset(osthrd, 0, sizeof(*osthrd));
 
@@ -715,17 +714,16 @@ OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
 #ifdef DECLARE_COMPLETION
 	init_completion(&osthrd->started);
 	init_completion(&osthrd->exited);
-
 	osthrd->pid = kernel_thread((int (*)(void *))cnxt_thread, osthrd, 0);
 	if(osthrd->pid < 0)
-	return;
+		return;
 
 	wait_for_completion(&osthrd->started);
 #else
 	osthrd->running = 0;
 	osthrd->pid = kernel_thread((int (*)(void *))cnxt_thread, NULL, 0);
 	if(osthrd->pid < 0)
-	return;
+		return;
 	{
 		int i;
 
@@ -742,8 +740,7 @@ OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
 	//OsDebugPrintf("%s: started pid %d (%s)\n", __FUNCTION__, osthrd->pid, osthrd->name);
 }
 
-static void
-OsThreadStop(OSTHRD *osthrd)
+static void OsThreadStop(OSTHRD *osthrd)
 {
 	//OsDebugPrintf("%s: stopping thread=%p pid=%d name=%s\n", __FUNCTION__, osthrd, osthrd->pid, osthrd->name);
 
@@ -771,9 +768,7 @@ OsThreadStop(OSTHRD *osthrd)
 	}
 }
 
-__shimcall__
-POSTHRD
-OsThreadCreate(const char *name, BOOLEAN highestprio, int *pid)
+__shimcall__ POSTHRD OsThreadCreate(const char *name, BOOLEAN highestprio, int *pid)
 {
 	OSTHRD *osthrd = OsAllocate(sizeof(OSTHRD));
 
@@ -810,14 +805,12 @@ __shimcall__ int OsThreadSchedule(POSTHRD osthrd, HOSSCHED hWorkStorage)
 		printk(KERN_DEBUG "%s: no thread %p?!\n", __FUNCTION__, osthrd);
 		return 0;
 	}
-
 	OsModuleUseCountInc();
 	ret = queue_task(tqs, &osthrd->tq);
 	if(!ret)
-	OsModuleUseCountDec();
+		OsModuleUseCountDec();
 	else
-	wake_up(&osthrd->wq);
-
+		wake_up(&osthrd->wq);
 	return ret;
 }
 
@@ -837,8 +830,7 @@ void OsThreadScheduleDone(void)
 static inline _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
 #endif
 
-__shimcall__
-int OsRunThreadSync(__kernelcall__ int (*func)(void *), void * data)
+__shimcall__ int OsRunThreadSync(__kernelcall__ int (*func)(void *), void * data)
 {
 	pid_t pid;
 	sigset_t tmpsig;
@@ -926,9 +918,7 @@ static int OsExec(void *execargs)
 #endif /* __x86_64__ */
 #endif /* !FOUND_KERNEL_EXECVE */
 
-__shimcall__
-int
-OsForkWait(char *program_path, char *argv[], char *envp[])
+__shimcall__ int OsForkWait(char *program_path, char *argv[], char *envp[])
 {
 	int err;
 
@@ -1002,7 +992,7 @@ static void TimerThreadFunction(void* pData)
 
 	/* callback might have set TASK_DELETE */
 	if(!test_bit(TASK_DELETE, (void*)&pTimeOutInstance->bLocked))
-	mod_timer(&(pTimeOutInstance -> Timer), jiffies + MSECS_TO_TICKS(pTimeOutInstance->mSec));
+		mod_timer(&(pTimeOutInstance -> Timer), jiffies + MSECS_TO_TICKS(pTimeOutInstance->mSec));
 
 	OsThreadScheduleDone();
 }
@@ -1015,7 +1005,7 @@ static void TimeOutHandler(unsigned long Data)
 
 	if(!test_and_set_bit(TASK_QUEUED, (void*)&pTimeOutInstance->bLocked)) {
 		if (OsThreadSchedule(OsMdmThread, &pTimeOutInstance->TaskQueue) <= 0)
-		clear_bit(TASK_QUEUED, (void*)(&pTimeOutInstance->bLocked));
+			clear_bit(TASK_QUEUED, (void*)(&pTimeOutInstance->bLocked));
 	}
 }
 
@@ -1025,7 +1015,6 @@ __shimcall__ HOSTIMER OsCreatePeriodicTimer(IN UINT32 InitialTimeOut, IN PCBFUNC
 {
 	PTIME_OUT_INSTANCE_T pTimeOutInstance;
 	int pid;
-	
 	
 	pTimeOutInstance = pFuncAlloc ? pFuncAlloc(sizeof(TIME_OUT_INSTANCE_T), pRefData) : OsAllocate(sizeof(TIME_OUT_INSTANCE_T));
 	if(0 == pTimeOutInstance) {
@@ -1051,7 +1040,6 @@ __shimcall__ HOSTIMER OsCreatePeriodicTimer(IN UINT32 InitialTimeOut, IN PCBFUNC
 #ifdef COMPLETION_INITIALIZER
 		static struct completion startup = COMPLETION_INITIALIZER(startup);
 #endif
-
 		OsModuleUseCountInc();
 		OsMdmThread = OsThreadCreate("modem", TRUE, &pid);
 		if(!OsMdmThread || pid <= 0) {
@@ -1068,7 +1056,6 @@ __shimcall__ HOSTIMER OsCreatePeriodicTimer(IN UINT32 InitialTimeOut, IN PCBFUNC
 			return NULL;
 		}
 	}
-
 	if(InitialTimeOut)
 		add_timer(&(pTimeOutInstance->Timer));
 	if(pThreadId)
@@ -1122,8 +1109,7 @@ __shimcall__ void OsDestroyPeriodicTimer(IN HOSTIMER hTimeOut)
 		OsFree(pTimeOutInstance);
 }
 
-__shimcall__
-BOOL OsSetPeriodicTimer(IN HOSTIMER hTimeOut, IN UINT32 NewTimeOut)
+__shimcall__ BOOL OsSetPeriodicTimer(IN HOSTIMER hTimeOut, IN UINT32 NewTimeOut)
 {
 	PTIME_OUT_INSTANCE_T	pTimeOutInstance = (PTIME_OUT_INSTANCE_T)hTimeOut;
 
@@ -1148,8 +1134,7 @@ BOOL OsSetPeriodicTimer(IN HOSTIMER hTimeOut, IN UINT32 NewTimeOut)
 	}
 }
 
-__shimcall__
-void OsImmediateTimeOut(IN HOSTIMER hTimeOut)
+__shimcall__ void OsImmediateTimeOut(IN HOSTIMER hTimeOut)
 {
 	PTIME_OUT_INSTANCE_T    pTimeOutInstance = (PTIME_OUT_INSTANCE_T)hTimeOut;
 
@@ -1158,8 +1143,7 @@ void OsImmediateTimeOut(IN HOSTIMER hTimeOut)
 
 static time_t epoch = 0;
 
-__shimcall__
-UINT32 OsGetSystemTime(void)
+__shimcall__ UINT32 OsGetSystemTime(void)
 {
 	struct timeval		timestamp;
 
@@ -1168,8 +1152,7 @@ UINT32 OsGetSystemTime(void)
 	return ((timestamp.tv_sec-epoch)*1000 + timestamp.tv_usec/1000);
 }
 
-__shimcall__
-void OsSleep(UINT32 ms)
+__shimcall__ void OsSleep(UINT32 ms)
 {
 	/* we must schedule() for sleeps >= 10ms since HCF calls us in loops
 	* waiting for asynchronous events.
@@ -1246,8 +1229,7 @@ HANDLE OsCreateTimer(UINT32 msec, __kernelcall__ PVOID pCBFunc, PVOID pRefData)
 	return ((HANDLE)pTimer);
 }
 
-__shimcall__
-void OsSetTimer(PVOID pTimer)
+__shimcall__ void OsSetTimer(PVOID pTimer)
 {
 	struct timer_list*	pTimerH;
 	PTIMER_T pTimerS = (PTIMER_T)pTimer;
@@ -1260,8 +1242,7 @@ void OsSetTimer(PVOID pTimer)
 	mod_timer(pTimerH, jiffies + MSECS_TO_TICKS(pTimerS->msec));
 }
 
-__shimcall__
-void OsCancelTimer(PVOID pTimer)
+__shimcall__ void OsCancelTimer(PVOID pTimer)
 {
 	struct timer_list*	pTimerH;
 	if ( pTimer == NULL )
@@ -1274,8 +1255,7 @@ void OsCancelTimer(PVOID pTimer)
 	del_timer(pTimerH);
 }
 
-__shimcall__
-void OsChangeTimerTimeOut(PVOID pTimer, UINT32 msec)
+__shimcall__ void OsChangeTimerTimeOut(PVOID pTimer, UINT32 msec)
 {
 	PTIMER_T pTimerS = (PTIMER_T)pTimer;
 	if ( pTimer == NULL )
@@ -1286,8 +1266,7 @@ void OsChangeTimerTimeOut(PVOID pTimer, UINT32 msec)
 	pTimerS->msec = msec;
 }
 
-__shimcall__
-void OsDestroyTimer(PVOID pTimer)
+__shimcall__ void OsDestroyTimer(PVOID pTimer)
 {
 	if ( pTimer == NULL )
 	{

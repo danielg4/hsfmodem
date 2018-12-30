@@ -56,6 +56,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x4f8b5ddb, __VMLINUX_SYMBOL_STR(_copy_to_user) },
 	{ 0xffd5a395, __VMLINUX_SYMBOL_STR(default_wake_function) },
 	{ 0x6561d1e6, __VMLINUX_SYMBOL_STR(pci_set_master) },
+	{ 0x35b97bc1, __VMLINUX_SYMBOL_STR(vfs_read) },
 	{ 0x706d051c, __VMLINUX_SYMBOL_STR(del_timer_sync) },
 	{ 0xfb578fc5, __VMLINUX_SYMBOL_STR(memset) },
 	{ 0x4c936d5d, __VMLINUX_SYMBOL_STR(default_llseek) },
@@ -129,6 +130,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x2482e688, __VMLINUX_SYMBOL_STR(vsprintf) },
 	{ 0x612a7e40, __VMLINUX_SYMBOL_STR(usb_free_urb) },
 	{ 0xc993bd44, __VMLINUX_SYMBOL_STR(try_module_get) },
+	{ 0x90bd7de2, __VMLINUX_SYMBOL_STR(vfs_write) },
 	{ 0x828011de, __VMLINUX_SYMBOL_STR(usb_alloc_urb) },
 	{ 0xf20dabd8, __VMLINUX_SYMBOL_STR(free_irq) },
 	{ 0xe914e41e, __VMLINUX_SYMBOL_STR(strcpy) },
@@ -141,4 +143,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "12205B682F1E72C9BCF6491");
+MODULE_INFO(srcversion, "9AD2D87391DB7DB6D0D1128");
