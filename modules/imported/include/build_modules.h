@@ -138,6 +138,8 @@
 #define NO_MT_SUPPORT
 #endif
 
+//#define NO_QC_SUPPORT
+
 #endif
 
 #if ( FRAME_WORK == FWK_CORSICA_ADS )
@@ -164,7 +166,7 @@
 #define NO_PIG_SUPPORT
 #define NO_JAPANESE_CID_SUPPORT
 #define NO_FRENCH_CID_SUPPORT
-/* #define NO_BLAM_SUPPORT */
+ #define NO_BLAM_SUPPORT
 /*#define NO_PULSE_SUPPORT */
 #define NO_DTMF_CID_SUPPORT
 /* #define NO_DCP_SUPPORT */

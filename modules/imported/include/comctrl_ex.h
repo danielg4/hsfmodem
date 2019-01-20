@@ -145,32 +145,23 @@ typedef enum
     COMCTRL_CONTROL_SETRTS,           /* Set RTS high                   - no extra data                     */
     COMCTRL_CONTROL_CLRRTS,           /* Set RTS low                    - no extra data                     */
     COMCTRL_CONTROL_SETDTR,           /* Set DTR high                   - no extra data                     */
-    COMCTRL_CONTROL_CLRDTR,           /* Set DTR low                    - no extra data                     */
-    
+    COMCTRL_CONTROL_CLRDTR,           /* Set DTR low                    - no extra data                     */    
     COMCTRL_CONTROL_SET_XON,
     COMCTRL_CONTROL_SET_XOFF,
     COMCTRL_CONTROL_SEND_XON,
-    COMCTRL_CONTROL_SEND_XOFF,
-    
+    COMCTRL_CONTROL_SEND_XOFF,    
     COMCTRL_CONTROL_RESETDEV,         /* Reset device if possible       - no extra data                     */
     COMCTRL_CONTROL_CHAR,             /* Send immediate character.      - [IN] (char)pData - char to send   */
-
     COMCTRL_CONTROL_START_MONITOR_CHAR, /* Start monitoring special character in Rx queue */
     COMCTRL_CONTROL_STOP_MONITOR_CHAR,  /* Stop monitoring special character in Rx queue */
-
     COMCTRL_CONTROL_INIT_STATE,
-
-    COMCTRL_CONTROL_PORTCONFIG,       /* Set Port Configuration         - [IN] (PPORT_CONFIG)pData          */
-    
+    COMCTRL_CONTROL_PORTCONFIG,       /* Set Port Configuration         - [IN] (PPORT_CONFIG)pData          */    
     COMCTRL_CONTROL_SLEEP,
     COMCTRL_CONTROL_WAKEUP,
 	COMCTRL_CONTROL_FLUSH,			  /* flushing FIFO */
-/*#$YS$ Added for Break handling */
 	COMCTRL_CONTROL_SET_BREAK_ON,	  /* Set break ON */
 	COMCTRL_CONTROL_SET_BREAK_OFF,	  /* Set break OFF */
-
     COMCTRL_CONTROL_LAST              /* Dummy */
-
 }COMCTRL_CONTROL_CODE;
 
 /*#$YS$ Added for Voice support */
@@ -211,9 +202,7 @@ TODO(?): structure may be compacted (replace BOOLs by bitfields)
 typedef struct tagPORT_CONFIG
 {
     UINT32          dwValidFileds;  /* Combination of PortConfiguration bits*/
-
     UINT32          dwDteSpeed;
-
     enum
     {
         PC_PARITY_NONE,
@@ -221,21 +210,22 @@ typedef struct tagPORT_CONFIG
         PC_PARITY_EVEN,
         PC_PARITY_MARK,
         PC_PARITY_SPACE
-    }               eParity;        /* Parity check*/
-
+    } eParity;        /* Parity check*/
     enum
     {
         PC_DATABITS_7,
         PC_DATABITS_8
-    }               eDataBits;      /* Data bits - only 7 and 8 are enabled*/
+    } eDataBits;      /* Data bits - only 7 and 8 are enabled*/
 
-    BOOL            fXOutput;       /* Xoff/Xon enabled for output*/
-    BOOL            fXInput;        /* Xoff/Xon enabled for input*/
-    BOOL            fError;         /* Replace chars with parity error by ErrorChar*/
-    BOOL            fNull;          /* Skip NULL characters*/
-    BOOL            fCTS;           /* Use CTS for Tx flow control*/
-    BOOL            fRTS;           /* Use RTS for Rx flow control*/
-
+	struct{
+		int            fXOutput:1;       /* Xoff/Xon enabled for output*/
+		int            fXInput:1;        /* Xoff/Xon enabled for input*/
+		int            fError:1;         /* Replace chars with parity error by ErrorChar*/
+		int            fNull:1;          /* Skip NULL characters*/
+		int            fCTS:1;           /* Use CTS for Tx flow control*/
+		int            fRTS:1;           /* Use RTS for Rx flow control*/
+	};
+	
     char            cXonChar;
     char            cXoffChar;
     char            cErrorChar;
@@ -317,8 +307,8 @@ __shimcall__ COM_STATUS   ComCtrl_Close                (HANDLE hInst);
 __shimcall__ COM_STATUS   ComCtrl_Configure            (HANDLE hInst, COMCTRL_CONFIG_CODE  eCode,  PVOID pConfig);
 __shimcall__ COM_STATUS   ComCtrl_Monitor              (HANDLE hInst, COMCTRL_MONITOR_CODE eCode, PVOID pMonitor);
 __shimcall__ COM_STATUS   ComCtrl_Control              (HANDLE hInst, COMCTRL_CONTROL_CODE eCode, PVOID pControl);
-__shimcall__ UINT32       ComCtrl_Read                 (HANDLE hInst, PVOID pBuf, UINT32 dwSize);
 __shimcall__ UINT32       ComCtrl_Write                (HANDLE hInst, PVOID pBuf, UINT32 dwSize);
+__shimcall__ UINT32       ComCtrl_Read                 (HANDLE hInst, PVOID pBuf, UINT32 dwSize);
 
 
 /* Interface through function table */
@@ -346,9 +336,12 @@ typedef struct I_COM_CTRL_TAG
 PVOID ComCtrlGetInterface(void);
 
 
+typedef struct _SYSLINO{
+	char dummy[0x10C];//400 510
+	PI_COM_CTRL_T hComCtrl;
+} I_SYSLINO;
 
 #ifdef USE_DIRECT_API
-
     #define COMCTRL_GetInterfaceVersion(pSys)                  ComCtrl_GetInterfaceVersion  ()
     #define COMCTRL_Create(             pSys)                  ComCtrl_Create               ()
     #define COMCTRL_Destroy(            pSys)                  ComCtrl_Destroy              (pSys->hComCtrl)

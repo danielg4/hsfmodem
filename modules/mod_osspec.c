@@ -7,7 +7,7 @@
  *
  */
 
-#define OS_NOSTRINGREDEFS
+//#define OS_NOSTRINGREDEFS
 
 #include "oscompat.h"
 #include "framewrk.h"
@@ -267,36 +267,38 @@ cnxtosspec_init(void)
 
     r = OsInit();
     if(r < 0)
-	return r;
+		return r;
 
 #if defined(SCR) && defined(NO_BLAM_SUPPORT)
-    r = OsScrInit();
+	r = OsScrInit();
     if(r < 0)
-	return r;
+		return r;
 #endif
 
 #if !defined NO_DIAGMGR_SUPPORT
     r = OsDiagInit();
     if(r < 0) {
 #if defined(SCR) && defined(NO_BLAM_SUPPORT)
-	OsScrExit();
+		OsScrExit();
 #endif
 	return r;
     }
 #endif
+
 #ifdef USE_DCP
     r = OsDcpInit();
     if(r < 0) {
 #if !defined NO_DIAGMGR_SUPPORT
-	OsDiagExit();
+		OsDiagExit();
 #endif
+
 #if defined(SCR) && defined(NO_BLAM_SUPPORT)
-	OsScrExit();
+		OsScrExit();
 #endif
-	return r;
+		return r;
     }
 #endif /* USE_DCP */
-
+	printk(KERN_INFO "%s\n", __FUNCTION__);
     return 0;
 }
 

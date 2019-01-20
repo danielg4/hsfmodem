@@ -16,6 +16,8 @@ MODULE_DESCRIPTION("Conexant modem engine");
 MODULE_LICENSE("see LICENSE file distributed with driver");
 MODULE_INFO(supported, "yes");
 
+//EXPORT_SYMBOL_NOVERS(ComCtrl_GetInterfaceVersion);
+//EXPORT_SYMBOL_NOVERS(ComCtrlGetInterface);
 EXPORT_SYMBOL_NOVERS(ComCtrl_Create);
 EXPORT_SYMBOL_NOVERS(ComCtrl_Destroy);
 EXPORT_SYMBOL_NOVERS(ComCtrl_Open);

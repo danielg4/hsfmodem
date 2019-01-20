@@ -680,15 +680,12 @@ kill_proc(pid_t pid, int sig, int priv)
 }
 #endif
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4,1,0)	
-	#define UART_INFO_TO_TTY(ui) (ui->port.tty->port)
-#else
 	#ifdef FOUND_STRUCT_TTY_PORT
 		#define UART_INFO_TO_TTY(ui) (ui->port.tty)
 	#else
 		#define UART_INFO_TO_TTY(ui) (ui->tty)
 	#endif
-#endif
+
 #ifdef FOUND_NO_STRUCT_UART_INFO
 typedef struct uart_state uart_info_t;
 #else

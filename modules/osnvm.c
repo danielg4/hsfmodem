@@ -12,18 +12,14 @@
 #include "osmemory.h"
 #include "osstdio.h"
 #include "osresour_ex.h"
-
 #include "comtypes.h"
 #include "configtypes.h"
 #include "testdebug.h"
-
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/unistd.h>
 #include <asm/fcntl.h>
-
 #include <linux/ctype.h>
-
 #include <linux/pci.h>
 
 #define caseretstr(x) case CFGMGR_##x: return #x
@@ -38,10 +34,11 @@
 
 static int osnvm_debug;
 #ifdef FOUND_MODULE_PARAM
-module_param(osnvm_debug, int, 0);
+//module_param(osnvm_debug, int, 0);
 #else
 MODULE_PARM(osnvm_debug, "i");
 #endif
+
 
 static char* eCodeStr(CFGMGR_CODE eCode)
 {
@@ -303,7 +300,6 @@ static char* eCodeStr(CFGMGR_CODE eCode)
 #endif
 		caseretstr(VOICE_DETECTION_MASK);
 #endif
-
 		caseretstr(HARDWARE_PROFILE);
 		caseretstr(HARDWARE_ID);
 		caseretstr(LICENSE_OWNER);
@@ -313,11 +309,10 @@ static char* eCodeStr(CFGMGR_CODE eCode)
 	default: {
 			static char buf[80];
 
-			if((eCode & 0xffff) == CFGMGR_COUNTRY_STRUCT) {
+			if((eCode & 0xffff) == CFGMGR_COUNTRY_STRUCT)
 				sprintf(buf, "COUNTRY_STRUCT_%02x\n", eCode >> 16);
-			} else {
+			else 
 				sprintf(buf, "code_%d\n", eCode);
-			}
 			return buf;
 		}
 	}
@@ -335,25 +330,25 @@ static const PROFILE_DATA g_FactoryProfile = {
 	0,							// Pulse
 	0,							// Quiet
 	1,							// Verbose
-	3,							// report Level (ATX3)
+	4,							// report Level (ATX3) **
 	0,							// Connect message
 	1,							// AmperC
 	2,							// AmperD
 	0,							// S0
 	0,							// S1;
-	43,							// S2;
-	13,							// S3;
-	10,							// S4;
-	8,							// S5;
+	43,						// S2;
+	13,						// S3;
+	10,						// S4;
+	8,						// S5;
 	2,							// S6;
-	50,							// S7;
+	50,						// S7;
 	2,							// S8;
-	14,							// S10;
-	95,							// S11;
-	50,							// S12;
+	14,						// S10;
+	95,						// S11;
+	50,						// S12;
 	0,							// S16;
 	0,							// S18;
-	70							// S29;
+	70						// S29;
 };
 
 enum NVM_FORMAT {
@@ -363,27 +358,23 @@ enum NVM_FORMAT {
 	NVM_FORMAT_STRING
 };
 
-static
-enum NVM_FORMAT nvmFormat(CFGMGR_CODE eCode)
+static enum NVM_FORMAT nvmFormat(CFGMGR_CODE eCode)
 {
 	switch(eCode) {
-	case CFGMGR_COUNTRY_CODE:
-	case CFGMGR_PREVIOUS_COUNTRY_CODE:
-	case CFGMGR_PCI_VENDOR_ID:
-	case CFGMGR_PCI_DEVICE_ID:
-		return NVM_FORMAT_HEXSHORTS;
-
-	case CFGMGR_HARDWARE_PROFILE:
-	case CFGMGR_LICENSE_OWNER:
-	case CFGMGR_LICENSE_STATUS:
-		return NVM_FORMAT_STRING;
-
-	case CFGMGR_HARDWARE_ID:
-	case CFGMGR_LICENSE_KEY:
-		return NVM_FORMAT_HEXLONGS;
-
-	default:
-		return NVM_FORMAT_HEXBYTES;
+		case CFGMGR_COUNTRY_CODE:
+		case CFGMGR_PREVIOUS_COUNTRY_CODE:
+		case CFGMGR_PCI_VENDOR_ID:
+		case CFGMGR_PCI_DEVICE_ID:
+			return NVM_FORMAT_HEXSHORTS;
+		case CFGMGR_HARDWARE_PROFILE:
+		case CFGMGR_LICENSE_OWNER:
+		case CFGMGR_LICENSE_STATUS:
+			return NVM_FORMAT_STRING;
+		case CFGMGR_HARDWARE_ID:
+		case CFGMGR_LICENSE_KEY:
+			return NVM_FORMAT_HEXLONGS;
+		default:
+			return NVM_FORMAT_HEXBYTES;
 	}
 }
 
@@ -434,7 +425,6 @@ static BOOL NVM_WriteListAppend(const char *pathname, PVOID pBuf, UINT32 dwSize,
 	return TRUE;
 }
 
-
 /* Write pBuf to file as sequence of two-digit hex bytes */
 static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT32 dwSize, enum NVM_FORMAT nvmFormat)
 {
@@ -462,7 +452,8 @@ static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT
 		sprintf (dp, "%02X\n", *p++);
 		dp += 3;
 
-	} else if((nvmFormat == NVM_FORMAT_HEXSHORTS) && !(dwSize % sizeof(UINT16))) {
+	} 
+	else if((nvmFormat == NVM_FORMAT_HEXSHORTS) && !(dwSize % sizeof(UINT16))) {
 		for (size = sizeof(UINT16); size < dwSize; size += sizeof(UINT16)) {
 			sprintf (dp, "%04X,", *(UINT16*)p);
 			p += sizeof(UINT16);
@@ -479,8 +470,8 @@ static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT
 		sprintf (dp, "%04X\n", *(UINT16*)p);
 		p += sizeof(UINT16);
 		dp += 5;
-
-	} else if((nvmFormat == NVM_FORMAT_HEXLONGS) && !(dwSize % sizeof(UINT32))) {
+	} 
+	else if((nvmFormat == NVM_FORMAT_HEXLONGS) && !(dwSize % sizeof(UINT32))) {
 		for (size = sizeof(UINT32); size < dwSize; size += sizeof(UINT32)) {
 			sprintf (dp, "%08X,", *(UINT32*)p);
 			p += sizeof(UINT32);
@@ -498,7 +489,8 @@ static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT
 		p += sizeof(UINT32);
 		dp += 9;
 
-	} else if(nvmFormat == NVM_FORMAT_STRING) {
+	} 
+	else if(nvmFormat == NVM_FORMAT_STRING) {
 		size = (dwSize < MAX_OEM_STR_LEN) ? dwSize : MAX_OEM_STR_LEN;
 		buf[0] = '"';
 		strncpy(&buf[1], pBuf, size);
@@ -508,8 +500,8 @@ static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT
 		buf[size++] = '\n';
 		buf[size] = '\0';
 		dp += size;
-
-	} else {
+	} 
+	else {
 		printk(KERN_ERR "%s: invalid NVM format (%d)\n", __FUNCTION__, nvmFormat);
 		goto err;
 	}
@@ -524,13 +516,11 @@ static BOOL NVM_WriteFileData(FILE *file, const char *pathname, PVOID pBuf, UINT
 	OsFClose(file);
 
 	if(osnvm_debug)
-	printk(KERN_DEBUG"%s: wrote %u bytes to %s\n", __FUNCTION__, dwSize, pathname);
-
+		printk(KERN_DEBUG"%s: wrote %u bytes to %s\n", __FUNCTION__, dwSize, pathname);
 	return TRUE;
-
 err:
 	if(file)
-	OsFClose(file);
+		OsFClose(file);
 	return FALSE;
 }
 
@@ -569,9 +559,7 @@ __shimcall__ void NVM_WriteFlushList(BOOL write)
 	}
 
 	while(!list_empty(&nvmelem_writelist)) {
-
 		nvmelem_t *nel = list_entry(nvmelem_writelist.next, nvmelem_t, link);
-
 		if(write) {
 			FILE *file;
 			int err;
@@ -579,21 +567,17 @@ __shimcall__ void NVM_WriteFlushList(BOOL write)
 			file = OsFOpen(nel->pathname, "w", &err);
 			if (!file) {
 				if(err == -EROFS)
-				goto done;
-
+					goto done;
 				printk(KERN_ERR"%s: cannot open %s (errno=%d)\n", __FUNCTION__, nel->pathname, err);
-
-			} else {
+			} 
+			else {
 				//printk(KERN_DEBUG"%s: writing %s\n", __FUNCTION__, nel->pathname);
 				NVM_WriteFileData(file, nel->pathname, nel->pBuf, nel->dwSize, nel->nvmFormat);
 			}
 		}
-
 		list_del(&nel->link);
-
 		OsFree(nel);
 	}
-
 done:
 	up(&nvmelem_writelist_sem);
 }
@@ -640,8 +624,7 @@ static BOOL NVM_WriteFile(const char *pathname, PVOID pBuf, UINT32 dwSize, enum 
 * - Sequence of two-digit hex bytes
 * - String enclosed in ""
 */
-static BOOL
-NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
+static BOOL NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
 {
 	int err;
 	FILE *file;
@@ -681,17 +664,15 @@ NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
 	if (file) {
 
 		if(osnvm_debug)
-		printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
+			printk(KERN_DEBUG"%s: opened %s\n", __FUNCTION__, pathname);
 
 		while(l > 0) {
 			n = OsFRead(buf, 1, sizeof(buf)-1, file, &errno);
 			if(n <= 0)
-			break;
+				break;
 
 			buf[n] = '\0';
-
 			for(p = buf; (l > 0) && (p < &buf[n]); p++) {
-
 				if(*p == '"') {
 					stringMode = !stringMode;
 					continue;
@@ -704,7 +685,7 @@ NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
 				}
 
 				if(!isxdigit(*p))
-				continue;
+					continue;
 
 				/* hack to read COUNTRY_CODE as UINT16 without swapping: */
 				if((p == buf) && (n == 5) && (l >= *pdwSize) && (*pdwSize == sizeof(UINT16)) &&
@@ -747,21 +728,18 @@ NVM_ReadFile(const char *pathname, PVOID pBuf, UINT32 *pdwSize)
 		OsFClose(file);
 
 		if(osnvm_debug && l)
-		printk(KERN_DEBUG"%s: read %u bytes (%u missing) from %s\n", __FUNCTION__, *pdwSize - l, l, pathname);
-	} else {
+			printk(KERN_DEBUG"%s: read %u bytes (%u missing) from %s\n", __FUNCTION__, *pdwSize - l, l, pathname);
+	} 
+	else {
 		if(osnvm_debug)
-		printk(KERN_DEBUG"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
+			printk(KERN_DEBUG"%s: cannot open %s (errno=%d)\n", __FUNCTION__, pathname, err);
 	}
-
 	*pdwSize -= l;
-
 	memset(dp, 0, l); /* zero pBuf remainder */
-
 	return file ? TRUE : FALSE;
 }
 
-static BOOL
-NVM_ReadStaticParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
+static BOOL NVM_ReadStaticParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
 	char pathname[100];
 
@@ -769,8 +747,7 @@ NVM_ReadStaticParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * 
 	return NVM_ReadFile(pathname, pBuf, pdwSize);
 }
 
-static BOOL
-NVM_ReadDynamicParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
+static BOOL NVM_ReadDynamicParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
 	char pathname[100];
 
@@ -778,8 +755,7 @@ NVM_ReadDynamicParm(POS_DEVNODE pDevNode, const char *name, PVOID pBuf, UINT32 *
 	return NVM_ReadFile(pathname, pBuf, pdwSize);
 }
 
-static BOOL
-NVM_ReadCountryParm(POS_DEVNODE pDevNode, int countryt35, UINT8 reference, const char *name, PVOID pBuf, UINT32 * pdwSize)
+static BOOL NVM_ReadCountryParm(POS_DEVNODE pDevNode, int countryt35, UINT8 reference, const char *name, PVOID pBuf, UINT32 * pdwSize)
 {
 	char pathname[100];
 	BOOL r;
@@ -792,12 +768,11 @@ NVM_ReadCountryParm(POS_DEVNODE pDevNode, int countryt35, UINT8 reference, const
 		if(pdwSize)
 		*pdwSize = Size;
 		return NVM_ReadFile(pathname, pBuf, pdwSize);
-	} else
+	}
 	return r;
 }
 
-static BOOL
-NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStruct *ctryPrms)
+static BOOL NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStruct *ctryPrms)
 {
 	UINT32 dwSize;
 	UINT8 Reference = 0xFF;
@@ -824,7 +799,8 @@ NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStru
 	if((daaType == SI3054_DAA) || (daaType == SI3055_DAA)) {
 		nameRelays = "/SILABRELAYS";
 		nameTxLevel = "/SMART_TXLEVEL";
-	} else if(daaType == CAESAR) {
+	} 
+	else if(daaType == CAESAR) {
 		nameRelays = "/SMART_RELAYS";
 		nameTxLevel = "/SMART_TXLEVEL";
 	} else
@@ -927,8 +903,7 @@ NVM_ReadCountry(POS_DEVNODE pDevNode, BYTE daaType, int countryt35, CtryPrmsStru
 }
 
 
-static
-BOOL isDynamicParm(CFGMGR_CODE eCode)
+static BOOL isDynamicParm(CFGMGR_CODE eCode)
 {
 	switch(eCode) {
 	case CFGMGR_PROFILE_STORED:
@@ -957,9 +932,7 @@ BOOL isDynamicParm(CFGMGR_CODE eCode)
 	}
 }
 
-__shimcall__
-COM_STATUS
-NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
+__shimcall__ COM_STATUS NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
 {
 	POS_DEVNODE pDevNode = (POS_DEVNODE)hNVM;
 	BOOL res;
@@ -971,7 +944,6 @@ NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
 		ASSERT(pdwSize);
 
 		Size = *pdwSize;
-
 		res = NVM_ReadDynamicParm(pDevNode, eCodeStr(eCode), pBuf, pdwSize);
 		if(!res) {
 			if (eCode == CFGMGR_COUNTRY_CODE) {
@@ -981,16 +953,19 @@ NVM_Read (HANDLE hNVM, CFGMGR_CODE eCode, PVOID pBuf, UINT32 * pdwSize)
 					*pdwSize = sizeof(g_DefaultCountryCode);
 					res = TRUE;
 				}
-			} else if (eCode == CFGMGR_PROFILE_STORED) {
+			} 
+			else if (eCode == CFGMGR_PROFILE_STORED) {
 				ASSERT(Size == sizeof(g_FactoryProfile));
 				if(Size == sizeof(g_FactoryProfile)) {
 					memcpy(pBuf, &g_FactoryProfile, sizeof(g_FactoryProfile));
 					*pdwSize = sizeof(g_FactoryProfile);
 					res = TRUE;
 				}
+				res = FALSE;
 			}
 		}
-	} else if(eCode == CFGMGR_COUNTRY_STRUCT) {
+	} 
+	else if(eCode == CFGMGR_COUNTRY_STRUCT) {
 #if TARGET_HCF_FAMILY
 		res = NVM_ReadCountry(pDevNode, SIMPLE_DAA, (int)pdwSize, pBuf);
 #else
@@ -1041,21 +1016,18 @@ __shimcall__ HANDLE NVM_Open (ULONG_PTR dwDevNode)
 	nvmnewinst_t *newinst;
 	
 	snprintf(instname, sizeof(instname), "%d-%s", pDevNode->hwInstNum, pDevNode->hwInstName);
-
 	err = NVM_NewInstance(instname);
-
 	if(err) {
 		printk(KERN_WARNING "%s: cannot create instance %s: err=%d will retry later...\n", __FUNCTION__, instname, err);
 		newinst = OsAllocate(sizeof(nvmnewinst_t));
 		if (!newinst)
-		return NULL;
+			return NULL;
 		newinst->instname = OsAllocate(strlen(instname) + 1);
 		if (!newinst->instname) {
 			OsFree(newinst);
 			return NULL;
 		}
 		strcpy(newinst->instname, instname);
-
 		down(&nvmelem_writelist_sem);
 		list_add_tail(&newinst->link, &nvm_newinst_list);
 		up(&nvmelem_writelist_sem);

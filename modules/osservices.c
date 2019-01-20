@@ -445,11 +445,12 @@ static void OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
 	
 	memset(osthrd, 0, sizeof(OSTHRD));
 	init_kthread_worker(&osthrd->kworker);
+	
 	osthrd->kworker_task = kthread_run(kthread_worker_fn, &osthrd->kworker, "k%s/%s", CNXTTARGET, name);	
 	if (IS_ERR(osthrd->kworker_task)){
 		printk(KERN_DEBUG "%s: Failed to create thread %p\n", __FUNCTION__, osthrd);
 		return;	
-	}
+	}	
 	osthrd->pid = osthrd->kworker_task->pid;
 	if(highestprio)
 		sched_setscheduler(osthrd->kworker_task, SCHED_FIFO, &param);
@@ -501,7 +502,6 @@ __shimcall__ int OsThreadSchedule(POSTHRD osthrd, HOSSCHED hWorkStorage)
 		printk(KERN_DEBUG "%s: no thread %p\n", __FUNCTION__, osthrd);
 		return 0;
 	}
-
 	OsModuleUseCountInc();
 	ret = queue_kthread_work(&osthrd->kworker, &w->work);
 	if(!ret)
@@ -1353,10 +1353,10 @@ UINT32 OsReadCpuCnt(void)
 }
 #endif
 
-__shimcall__
-int OsInit(void)
+__shimcall__ int OsInit(void)
 {
 	struct timeval timestamp;
+
 	do_gettimeofday(&timestamp);
 
 	epoch = timestamp.tv_sec;
@@ -1373,14 +1373,13 @@ int OsInit(void)
 	if(sizeof(OSSCHED) <= sizeof(struct kwork_data)) {
 		OsErrorPrintf("OSSCHED too small (%d < %d)\n", sizeof(OSSCHED), sizeof(struct kwork_data));
 #else
-		if(sizeof(OSSCHED) <= sizeof(struct tq_struct)) {
-			OsErrorPrintf("OSSCHED too small (%d < %d)\n", sizeof(OSSCHED), sizeof(struct tq_struct));
+	if(sizeof(OSSCHED) <= sizeof(struct tq_struct)) {
+		OsErrorPrintf("OSSCHED too small (%d < %d)\n", sizeof(OSSCHED), sizeof(struct tq_struct));
 #endif
 			return -ENOSPC;
-		}
-
-		return 0;
 	}
+	return 0;
+}
 
 	/********************************************************************/
 

@@ -59,6 +59,7 @@ __shimcall__ FILE * OsFOpen (const char *path, const char *mode, int *errp)
 		filp = NULL;
 		goto out;
 	}
+	
 	//printk(KERN_INFO "%s(\"%s\", \"%s\")\n", __FUNCTION__, path, mode); //KDB_ENTER();
 
 	if(!strcmp(mode, "r") || !strcmp(mode, "rb")) 
@@ -102,8 +103,6 @@ again:
 #endif   
 	filp = filp_open(path, flags, creatmode);	
 	
-	//set_fs(oldfs);
-	
 #ifdef FOUND_CURRENT_CRED
 	error = set_current_fsuid(origfsuid);
 	if (error) {
@@ -136,14 +135,17 @@ again:
 		filp = NULL;
 		goto out;
 	}
-#if ( LINUX_VERSION_CODE <= KERNEL_VERSION(4,0,0) )
-	if (!filp->f_op || (!filp->f_op->read && !filp->f_op->write)) {		
+	if (!filp->f_op 
+#if ( LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,0) )	
+		|| (!filp->f_op->read && !filp->f_op->write)
+#endif	
+		) {		
 		error = -EIO;
 		filp_close(filp, NULL);
 		filp = NULL;
 		goto out;
 	}
-#endif	
+
 	if(do_trunc) {
 		do_trunc = 0;
 		filp_close(filp, NULL);
@@ -157,8 +159,8 @@ out:
 		*errp = error;
 	else if(error && (error != -ENOENT))
 		printk(KERN_ERR "%s(\"%s\", \"%s\"): error %d\n", __FUNCTION__, path, mode, error);
-	//printk(KERN_INFO "%s %d\n", __FUNCTION__, lino); //KDB_ENTER();	
 	
+	//printk(KERN_INFO "%s %s\n", __FUNCTION__, lino); //KDB_ENTER();		
 	if (filp)
 		filp->f_pos = 0; 
 	return filp;
@@ -185,8 +187,9 @@ __shimcall__ size_t OsFRead(void *ptr, size_t size, size_t nmemb, FILE *filp, in
 
 		oldfs = get_fs();
 		set_fs(get_ds());
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )		
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) )		
 	bytes = vfs_read(filp, ptr, size*nmemb, &filp->f_pos);
+	//bytes =0;
 #else
 	bytes = filp->f_op->read(filp, ptr, size*nmemb, &filp->f_pos);
 #endif				
@@ -214,7 +217,7 @@ __shimcall__ size_t OsFWrite(const void *ptr, size_t size, size_t nmemb, FILE *f
 
 		oldfs = get_fs();
 		set_fs(get_ds());
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )				
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) )				
 		bytes = vfs_write(filp, ptr, size*nmemb, &filp->f_pos);
 #else
 		bytes = filp->f_op->write(filp, ptr, size*nmemb, &filp->f_pos);
