@@ -1,6 +1,4 @@
 /*
-/*
-/*
 *  Virtual serial port driver for Conexant modems
 *
 *	Written by Marc Boucher <marc@linuxant.com>
@@ -122,13 +120,14 @@ struct cnxt_serial_inst {
 	HANDLE hcomctrl;
 	char *typestr;
 	struct uart_port *port;
-	int rxenabled;
-	int txenabled;
-	int evt_rxchar;
-	int evt_rxbreak;
-	int evt_rxovrn;
-	int evt_txempty;
-	int irq;
+	struct{
+		unsigned int rxenabled:1;
+		unsigned int txenabled:1;
+		unsigned int evt_rxchar:1;
+		unsigned int evt_rxbreak:1;
+		unsigned int evt_rxovrn:1;
+		unsigned int evt_txempty:1;
+	};
 	unsigned char readbuf[CNXT_READBUF_SIZE];
 	int readcount, readoffset;
 	u_int mctrl_flags;
@@ -142,8 +141,8 @@ struct cnxt_serial_inst {
 	struct proc_dir_entry *proc_hwrevision;
 #ifdef COMCTRL_MONITOR_POUND_UG_SUPPORT
 	struct proc_dir_entry *proc_lastcallstatus;
-#endif // COMCTRL_MONITOR_POUND_UG_SUPPORT
-#endif // CONFIG_PROC_FS
+#endif
+#endif
 };
 
 #ifdef CONFIG_PROC_FS
@@ -161,7 +160,6 @@ static struct uart_port *cnxt_ports = NULL;
 static struct _cnxt_serial_shared_memory{
 	int hwInstNum;
 	unsigned char *buf;
-	unsigned char x_char;
 } *cnxt_serial_shared_memory = NULL;
 #endif
 
@@ -201,7 +199,7 @@ cnxt_stop_tx(struct uart_port *port)
 #endif
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
-	printk(KERN_DEBUG "%s %d\n", __FUNCTION__,(int)(port - cnxt_ports));
+	//printk(KERN_DEBUG "%s %d\n", __FUNCTION__,(int)(port - cnxt_ports));
 	inst->txenabled = 0;
 }
 
@@ -214,7 +212,7 @@ cnxt_start_tx(struct uart_port *port)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 
-	printk(KERN_DEBUG "%s %p\n", __FUNCTION__,port);	
+	//printk(KERN_DEBUG "%s %p\n", __FUNCTION__,port);	
 	
 	cnxt_sched_intr(inst);
 	inst->txenabled = 1;
@@ -224,14 +222,10 @@ cnxt_start_tx(struct uart_port *port)
 
 static void cnxt_stop_rx(struct uart_port *port)
 {
-	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
-	
-	printk(KERN_DEBUG "%s\n", __FUNCTION__);
+//	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 		
-	
 	//cnxt_control(inst, COMCTRL_CONTROL_SET_BREAK_ON, 0);
 	//inst->rxenabled = 0;
-	cnxt_serial_shared_memory->x_char++;
 }
 
 static int cnxt_rx_ready(struct cnxt_serial_inst *inst)
@@ -248,6 +242,7 @@ static int cnxt_rx_ready(struct cnxt_serial_inst *inst)
 		else{
 			inst->readcount = r;
 			inst->readoffset = 0;
+			inst->evt_rchar = 0;
 		}
 	}
 	return (inst->readcount > inst->readoffset) || inst->evt_rxbreak || inst->evt_rxovrn;
@@ -255,9 +250,9 @@ static int cnxt_rx_ready(struct cnxt_serial_inst *inst)
 
 static void cnxt_rx_chars(struct cnxt_serial_inst *inst){
 	struct tty_struct *tty = UART_INFO_TO_TTY(inst->uart_info);//port->state->port.tty
-	int max_count = sizeof(inst->readbuf);
+	int max_count;
 	unsigned char flag,ch;
-	char lino[1024];
+	char lino[512];
 	int i;
 	spinlock_t *lock;
 	unsigned long flags;
@@ -274,11 +269,9 @@ static void cnxt_rx_chars(struct cnxt_serial_inst *inst){
 	lock = &port->lock;
 #endif
 	
-	spin_lock_irqsave(lock, flags);	
-	
+	spin_lock_irqsave(lock, flags);		
 	max_count = inst->readcount;
 	while(max_count-- > 0) {
-
 #ifndef FOUND_TTY_NEW_API //old vesrion
 		if(unlikely(tty->flip.count >= TTY_FLIPBUF_SIZE)) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -286,11 +279,12 @@ static void cnxt_rx_chars(struct cnxt_serial_inst *inst){
 #else
 			tty->flip.work.func((void *)tty);
 #endif
-			if(tty->flip.count >= TTY_FLIPBUF_SIZE)
-				return; // if TTY_DONT_FLIP is set
+			if(tty->flip.count >= TTY_FLIPBUF_SIZE){
+				spin_unlock_irqrestore(lock, flags);				
+				return; 
+			}
 		}
 #endif
-
 		if (inst->evt_rxovrn) {
 			inst->evt_rxovrn = 0;
 			inst->uart_port->icount.overrun++;
@@ -314,16 +308,10 @@ static void cnxt_rx_chars(struct cnxt_serial_inst *inst){
 		else
 			flag = TTY_NORMAL;				
 		ch = inst->readbuf[inst->readoffset++];
-		if(i < 1020)
+		if(i < 510)
 			lino[i++]=ch;
 #ifdef FOUND_TTY_NEW_API
 		tty_insert_flip_char(&inst->uart_info->port, ch, flag);
-		//if (!uart_handle_sysrq_char(port, ch))
-				//uart_insert_char(port, 0, 0, ch,TTY_NORMAL);
-		//tty->count++;
-		/*if (uart_handle_sysrq_char(inst->uart_port,ch))
-				continue;
-		uart_insert_char(inst->uart_port, 0, 2, ch, flag);*/
 #else
 		*tty->flip.flag_buf_ptr++ = flag;
 		*tty->flip.char_buf_ptr++ = inst->readbuf[inst->readoffset++];
@@ -371,11 +359,11 @@ static void cnxt_tx_chars(struct cnxt_serial_inst *inst)
 	struct uart_port *port;
 	spinlock_t *lock;
 	unsigned long flags;
-	unsigned int txlen, to_send, until_end;
+	unsigned int to_send, until_end;
 	unsigned char ch;
 	
 	int i;
-	char lino[1024],s[5];
+	char lino[512],s[5];
 	
 	lino[i=0]=0;
 	port = inst->uart_port;
@@ -393,7 +381,6 @@ static void cnxt_tx_chars(struct cnxt_serial_inst *inst)
 		cnxt_put_char(inst, port->x_char);
 		port->icount.tx++;
 		port->x_char = 0;
-		printk(KERN_DEBUG "%s: x_char \n", __FUNCTION__);
 		spin_unlock_irqrestore(lock, flags);
 		return;
 	}
@@ -422,7 +409,7 @@ static void cnxt_tx_chars(struct cnxt_serial_inst *inst)
 		to_send--;
 	}
 	//lino[i] = 0;
-	printk(KERN_DEBUG "%s: %s %d %d %d\n", __FUNCTION__,lino,to_send,until_end,cnxt_serial_shared_memory->x_char);
+	printk(KERN_DEBUG "%s: %s %d %d\n", __FUNCTION__,lino,to_send,until_end);
 	
 	/*if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS){
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -440,6 +427,7 @@ static void cnxt_tx_chars(struct cnxt_serial_inst *inst)
 		cnxt_stop_tx(port);
 #endif
 	}
+	
 	spin_unlock_irqrestore(lock, flags);	
 }
 
@@ -450,28 +438,23 @@ static int cnxt_tx_ready(struct cnxt_serial_inst *inst) {
 //fixme
 static void cnxt_intr(void *dev_id)
 {
-	unsigned int pass_counter = 0;
+	int pass_counter,tx_ready;
 	struct cnxt_serial_inst *inst = (struct cnxt_serial_inst *)dev_id;
 	
-	printk(KERN_DEBUG "%s:\n", __FUNCTION__);
-	while (inst->uart_info && (cnxt_rx_ready(inst) || cnxt_tx_ready(inst))) {
-		if(cnxt_tx_ready(inst))
+	//printk(KERN_DEBUG "%s:\n", __FUNCTION__);
+	for (pass_counter = 0;pass_counter < CNXT_ISR_PASS_LIMIT && inst->uart_info && ((tx_ready = cnxt_tx_ready(inst)) || cnxt_rx_ready(inst));pass_counter++) {
+		if(tx_ready)
 			cnxt_tx_chars(inst);
 		cnxt_rx_chars(inst);		
-		if (pass_counter++ > CNXT_ISR_PASS_LIMIT)
-			break;
 	}
 	OsModuleUseCountDec();
 	OsThreadScheduleDone();
 }
 
-/*
-* Return TIOCSER_TEMT when transmitter is not busy.
-*/
 static u_int cnxt_tx_empty(struct uart_port *port)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
-	printk(KERN_ERR "%s: \n", __FUNCTION__);
+	//printk(KERN_ERR "%s: \n", __FUNCTION__);
 	return inst->evt_txempty ? TIOCSER_TEMT : 0;
 }
 
@@ -516,8 +499,7 @@ static void cnxt_set_mctrl(struct uart_port *port, u_int mctrl)
 #define TIOCM_OUT2	0x4000
 #define TIOCM_LOOP	0x8000
 */
-	printk(KERN_DEBUG "%s: mctrl=%08X omctrl=%08X\n", __FUNCTION__, mctrl,inst->mctrl_flags);
-
+	//printk(KERN_DEBUG "%s: mctrl=%08X omctrl=%08X\n", __FUNCTION__, mctrl,inst->mctrl_flags);
 	
 	if ((mctrl & TIOCM_RTS) && !(inst->mctrl_flags & TIOCM_RTS)) {//0x4
 		inst->mctrl_flags |= TIOCM_RTS;
@@ -537,15 +519,14 @@ static void cnxt_set_mctrl(struct uart_port *port, u_int mctrl)
 	if (!(mctrl & TIOCM_DTR) && (inst->mctrl_flags & TIOCM_DTR)) {
 		inst->mctrl_flags &= ~TIOCM_DTR;
 //		cnxt_control(inst, COMCTRL_CONTROL_CLRDTR, 0);
-	}
-	
+	}	
 }
 
 static void cnxt_break_ctl(struct uart_port *port, int break_state)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 
-	printk(KERN_DEBUG "%s: break_state=%d\n", __FUNCTION__, break_state);
+	//printk(KERN_DEBUG "%s: break_state=%d\n", __FUNCTION__, break_state);
 	cnxt_control(inst, break_state ? COMCTRL_CONTROL_SET_BREAK_ON : COMCTRL_CONTROL_SET_BREAK_OFF, 0);
 }
 
@@ -556,8 +537,8 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 	int sched_intr=0;
 	
 	printk(KERN_DEBUG "%s %08X %p\n", __FUNCTION__,dwEvtMask,port);
+	
 	orig_mctrl_flags = mctrl_flags = inst->mctrl_flags;
-
 	if((dwEvtMask & COMCTRL_EVT_RXCHAR)) {
 		inst->evt_rxchar = 1;		
 		sched_intr = 1;
@@ -617,7 +598,8 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 
 	if(inst->mctrl_flags != mctrl_flags) {
 		inst->mctrl_flags = mctrl_flags;
-#if 1
+
+#if 0
 		printk(KERN_DEBUG "%cCTS %cDSR %cDCD %cRI\n",
 		inst->mctrl_flags&TIOCM_CTS?'+':'-',
 		inst->mctrl_flags&TIOCM_DSR?'+':'-',
@@ -674,16 +656,6 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 		cnxt_sched_intr(inst);
 }
 
-static irqreturn_t ks8695uart_tx_chars(int irq, void *dev_id){
-	printk(KERN_DEBUG "%s %d\n", __FUNCTION__,irq);
-	return IRQ_HANDLED;
-}
- 
-static irqreturn_t ks8695uart_rx_chars(int irq, void *dev_id){
-	printk(KERN_DEBUG "%s %d\n", __FUNCTION__,irq);
-	return IRQ_HANDLED;	 
-}
-
 static int cnxt_startup(struct uart_port *port
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 , struct uart_info *info
@@ -691,7 +663,6 @@ static int cnxt_startup(struct uart_port *port
 )
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
-	int ret;
 	
 	if(!inst->hcomctrl)
 		return -ENODEV;
@@ -707,18 +678,6 @@ static int cnxt_startup(struct uart_port *port
 #endif
 		
 	while(ComCtrl_Read(inst->hcomctrl, inst->readbuf, sizeof(inst->readbuf)) > 0);
-	
-	/*printk(KERN_DEBUG "%s %p\n", __FUNCTION__,port);
-	irq_modify_status(inst->irq, IRQ_NOREQUEST, IRQ_NOAUTOEN);
-	
-	
-	ret = request_irq(inst->irq, ks8695uart_tx_chars, IRQF_SHARED, "UART TX", port);
-	printk(KERN_DEBUG  "ks8695uart_tx_chars %d\n", ret);
-	//if (ret)
-//		goto err_tx;
-
-	ret = request_irq(inst->irq + 1, ks8695uart_rx_chars, IRQF_SHARED, "UART RX", port);
-	printk(KERN_DEBUG "ks8695uart_rx_chars %d\n", ret);*/
 	
 	inst->readcount = inst->readoffset = 0;
 	inst->evt_rxchar = 0;
@@ -824,7 +783,7 @@ cnxt_set_termios(struct uart_port *port, struct termios *termios, struct termios
 	PORT_CONFIG port_config={0};
 	
 	port_config.dwDteSpeed = uart_get_baud_rate(port, termios, old,port->uartclk / 16 / 0xffff,  port->uartclk / 4);
-	//port_config.dwValidFileds |= PC_DTE_SPEED;
+	port_config.dwValidFileds |= PC_DTE_SPEED;
 			
 	termios->c_cflag &= ~CMSPAR;
 	
@@ -839,13 +798,8 @@ cnxt_set_termios(struct uart_port *port, struct termios *termios, struct termios
 	} 
 	else
 		port_config.eParity = PC_PARITY_NONE;
-	//port_config.dwValidFileds |= PC_PARITY;
+	port_config.dwValidFileds |= PC_PARITY;
 
-	/*if((termios->c_cflag & CSIZE) == CS7)
-		port_config.eDataBits = PC_DATABITS_7;
-	else
-		port_config.eDataBits = PC_DATABITS_8;*/
-	
 	switch((termios->c_cflag & CSIZE)){
 		case CS8:
 			port_config.eDataBits = PC_DATABITS_8;
@@ -856,10 +810,10 @@ cnxt_set_termios(struct uart_port *port, struct termios *termios, struct termios
 	}	
 	port_config.dwValidFileds |= PC_DATA_BITS;
 
-	//if (termios->c_cflag & CRTSCTS) {
+	if (termios->c_cflag & CRTSCTS) {
 		port_config.fCTS = TRUE;
 		port_config.fRTS = TRUE;
-	//}
+	}
 	port_config.dwValidFileds |= PC_CTS | PC_RTS;
 
 	//cnxt_control(inst, COMCTRL_CONTROL_PORTCONFIG, &port_config);
@@ -922,7 +876,6 @@ static int cnxt_verify_port(struct uart_port *port, struct serial_struct *ser)
 	
 	printk(KERN_DEBUG "%s %d\n", __FUNCTION__,ser->type);
 	
-	return 0;
 	if (ser->type != PORT_CNXT)
 		ret = -EINVAL;
 	if (port->irq != ser->irq)
@@ -943,6 +896,20 @@ static int cnxt_verify_port(struct uart_port *port, struct serial_struct *ser)
 static const char *cnxt_type(struct uart_port *port)
 {
 	return cnxt_serial_inst[port->line].typestr ? cnxt_serial_inst[port->line].typestr : CNXTDRVDSC;
+}
+
+static int cnxt_ioctl_port(struct uart_port *port, unsigned int cmd, unsigned long arg){
+	int ret = -ENOIOCTLCMD;
+	printk(KERN_DEBUG "%s %lu\n", __FUNCTION__,cmd);
+	switch(cmd){
+		case TCGETS:
+			break;
+		case TCFLSH:
+			break;
+		case TCSETS:
+			break;
+	}
+	return ret;
 }
 
 static struct uart_ops cnxt_pops = {
@@ -966,6 +933,7 @@ static struct uart_ops cnxt_pops = {
 	.request_port = cnxt_request_port,
 	.config_port = cnxt_config_port,
 	.verify_port	=	cnxt_verify_port,
+	.ioctl = cnxt_ioctl_port
 };
 
 static int serialmajor = CNXTSERIALMAJOR;
@@ -1114,13 +1082,13 @@ static struct uart_driver cnxt_reg = {
 	}
 #endif
 
-static int cnxt_flush_nvm(struct file *file, const char __user *buffer, unsigned long count, void *data)
+static ssize_t cnxt_flush_nvm(struct file *file, const char *buf, size_t size, loff_t *off)
 {
 	printk(KERN_DEBUG "%s: called\n", __FUNCTION__);
 
 	NVM_WriteFlushList(TRUE);
 
-	return count;
+	return size;
 }
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0) )
@@ -1267,15 +1235,6 @@ static void uart_unregister_port(struct uart_driver *drv, int line){
 }
 #endif /* FOUND_UART_REGISTER_PORT */
 
-static irqreturn_t cnxt_serial_ist(int irq, void *dev_id)
-{
-	bool handled = false;
-	
-	printk(KERN_DEBUG "%s: %d\n", __FUNCTION__, irq);
-	return IRQ_RETVAL(handled);
-	
-}
-
 int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, unsigned int irq, struct module *owner)
 {
 	struct cnxt_serial_inst *inst = NULL;
@@ -1356,12 +1315,6 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 		r = -EIO;
 		goto errout;
 	}
-	/*if((r = ComCtrl_Control(inst->hcomctrl, COMCTRL_CONTROL_INIT_STATE, 0))){
-		printk(KERN_DEBUG "%s: ComCtrl_Control COMCTRL_CONTROL_INIT_STATE failed (%d)\n", __FUNCTION__, r);
-		r = -EIO;
-		goto errout;
-
-	}*/
 		
 	inst->mctrl_flags |= TIOCM_DSR; // until comctrl generates events for this
 		
@@ -1371,8 +1324,8 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 	port.irq = irq;
 	
 	port.membase	= (void __iomem *)~0;
-	port.iobase = 0;
-	port.irq = 0;	
+	//port.iobase = 0;
+	//port.irq = 0;	
 	
 	port.iotype = port.iobase ? SERIAL_IO_PORT : SERIAL_IO_MEM;
 	port.uartclk = BASE_BAUD * 16;
@@ -1383,7 +1336,6 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 	//fixme => ok
 	//port.dev = devnode->hwDevLink;	
 	
-	inst->irq = irq;
 	if((r = uart_register_port(&cnxt_reg, &port)) < 0) {
 		inst->mctrl_flags &= ~TIOCM_DSR;
 		ComCtrl_Close(inst->hcomctrl);
@@ -1393,27 +1345,7 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 	if(r != i)
 		printk(KERN_WARNING "%s: uart_register_port returned %d, expecting %d\n", __FUNCTION__, r, i);
 	
-	/*PORT_CONFIG port_config={0};	
-	memset(&port_config, 255, sizeof(port_config));
-
-	port_config.dwDteSpeed = 9600;
-	port_config.dwValidFileds |= PC_DTE_SPEED;	
-	port_config.eParity = PC_PARITY_ODD;//pari
-	port_config.dwValidFileds |= PC_PARITY;
-	port_config.eDataBits = PC_DATABITS_7;
-	port_config.dwValidFileds |= PC_DATA_BITS;
-	port_config.fCTS = 1;
-	port_config.fRTS = 1;
-	port_config.dwValidFileds |= PC_CTS | PC_RTS;
-	
-	/*port_config.fXOutput = 1;
-	port_config.fXInput = 1;
-	port_config.dwValidFileds |= PC_XINPUT|PC_XOUTPUT;*/
-	
-	cnxt_serial_shared_memory->x_char = 152;
-
-	while(ComCtrl_Read(inst->hcomctrl, inst->readbuf, sizeof(inst->readbuf)) > 0)
-		printk(KERN_DEBUG "%s %s\n", __FUNCTION__,inst->readbuf);
+	while(ComCtrl_Read(inst->hcomctrl, inst->readbuf, sizeof(inst->readbuf)) > 0);
 
 #ifdef CONFIG_PROC_FS
 	if(cnxt_serial_proc_dir) {
@@ -1624,8 +1556,7 @@ static void __exit cnxt_serial_exit(void)
 			remove_proc_entry("flush_nvm", cnxt_serial_proc_dir);
 		remove_proc_entry(PROC_PREFIX CNXTTARGET, proc_root_driver);
 	}
-#endif
-	
+#endif	
 	uart_exit();
 	if(cnxt_serial_inst != NULL)
 		kfree(cnxt_serial_inst);
@@ -1633,7 +1564,6 @@ static void __exit cnxt_serial_exit(void)
 	cnxt_ports = NULL;
 	cnxt_serial_shared_memory = NULL;
 }
-
 
 module_init(cnxt_serial_init);
 module_exit(cnxt_serial_exit);
