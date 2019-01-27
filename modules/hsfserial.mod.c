@@ -62,6 +62,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x2421b896, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_ComCtrl_Monitor) },
 	{ 0x6dc6dd56, __VMLINUX_SYMBOL_STR(down) },
 	{ 0x698a99e9, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_OsMdmThread) },
+	{ 0x9e40c20d, __VMLINUX_SYMBOL_STR(pid_task) },
 	{ 0x2331a196, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_ComCtrl_Configure) },
 	{ 0x8e179160, __VMLINUX_SYMBOL_STR(prepare_creds) },
 	{ 0x61651be, __VMLINUX_SYMBOL_STR(strcat) },
@@ -74,17 +75,20 @@ __attribute__((section("__versions"))) = {
 	{ 0xbdfb6dbb, __VMLINUX_SYMBOL_STR(__fentry__) },
 	{ 0x26932b93, __VMLINUX_SYMBOL_STR(kmem_cache_alloc_trace) },
 	{ 0x680ec266, __VMLINUX_SYMBOL_STR(_raw_spin_lock_irqsave) },
-	{ 0xa6bbd805, __VMLINUX_SYMBOL_STR(__wake_up) },
+	{ 0xf9ac7839, __VMLINUX_SYMBOL_STR(init_pid_ns) },
 	{ 0xf726356c, __VMLINUX_SYMBOL_STR(proc_create_data) },
 	{ 0xadf88359, __VMLINUX_SYMBOL_STR(seq_lseek) },
 	{ 0x37a0cba, __VMLINUX_SYMBOL_STR(kfree) },
 	{ 0x70befe59, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_ComCtrl_Read) },
+	{ 0xefae3e75, __VMLINUX_SYMBOL_STR(send_sig_info) },
 	{ 0x78e739aa, __VMLINUX_SYMBOL_STR(up) },
 	{ 0xd6d7dc3, __VMLINUX_SYMBOL_STR(uart_register_driver) },
 	{ 0x566d2a6c, __VMLINUX_SYMBOL_STR(tty_flip_buffer_push) },
 	{ 0x28318305, __VMLINUX_SYMBOL_STR(snprintf) },
+	{ 0x4f6b400b, __VMLINUX_SYMBOL_STR(_copy_from_user) },
 	{ 0x3ed883b6, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_ComCtrl_Create) },
 	{ 0xa0497153, __VMLINUX_SYMBOL_STR(uart_get_baud_rate) },
+	{ 0xa65b4573, __VMLINUX_SYMBOL_STR(find_pid_ns) },
 	{ 0x6f6dfb4d, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_ComCtrl_Write) },
 	{ 0xc993bd44, __VMLINUX_SYMBOL_STR(try_module_get) },
 	{ 0x90bd7de2, __VMLINUX_SYMBOL_STR(vfs_write) },
@@ -97,4 +101,4 @@ __attribute__((section(".modinfo"))) =
 "depends=hsfosspec,hsfengine";
 
 
-MODULE_INFO(srcversion, "EE80B13284765D4920EED58");
+MODULE_INFO(srcversion, "15FEA04790496E31C0F6C82");

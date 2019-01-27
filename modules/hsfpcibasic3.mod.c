@@ -88,7 +88,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x91a19aa1, __VMLINUX_SYMBOL_STR(pci_choose_state) },
 	{ 0x6e537fc3, __VMLINUX_SYMBOL_STR(pci_enable_device) },
 	{ 0x8e7b8953, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_OsSetTimer) },
-	{ 0x29d8cbc6, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_cnxt_serial_add) },
+	{ 0x1456e13, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_cnxt_serial_add) },
 	{ 0xc993bd44, __VMLINUX_SYMBOL_STR(try_module_get) },
 	{ 0x8c8c9b26, __VMLINUX_SYMBOL_STR(pci_save_state) },
 	{ 0x8b082cfa, __VMLINUX_SYMBOL_STR(cnxthsf_7800206x86_64oem_OsIoMemWritew) },
