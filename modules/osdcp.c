@@ -44,26 +44,18 @@ static struct class *dcp_class;
 typedef struct {
 	struct list_head entry;
 	spinlock_t lock;
-
 	POS_DEVNODE	pDevNode;
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	devfs_handle_t devfs_handle;
 #endif
-
 	struct list_head units;
-
 	int restarted;
-
 	int volume;
-
 #ifdef OSDCP_SKIP
 	int skip;
 #endif
-
 	unsigned char ringBuf[DCP_SAMPLE_SIZE * DCP_SAMPLE_RATE * 2]; /* buffer upto two seconds */
 	int putIdx;
-
 	wait_queue_head_t read_wait;
 	struct fasync_struct *fasync;
 } dcp_instance_t;
@@ -90,7 +82,7 @@ static int dcp_fasync(int fd, struct file *file, int on)
 	int r;
 
 	if(!pDcp)
-	return -ENODEV;
+		return -ENODEV;
 
 	r = fasync_helper(fd, file, on, &pDcp->fasync);
 	return (r < 0) ? r : 0;
@@ -124,19 +116,13 @@ static ssize_t dcp_read(struct file * file, char * buf, size_t nbytes, loff_t *p
 
 	if(nbytes <= 0)
 		return 0;
-
 	if(!pDcp)
 		return -ENODEV;
-
 	spin_lock_irqsave(&pDcp->lock, flags);
-
 	if((pDcp->putIdx == su->takeIdx) && (su->takeIdx >= 0)) {
 		DECLARE_WAITQUEUE(wait, current);
-
 		add_wait_queue(&pDcp->read_wait, &wait);
-
 		while(pDcp->putIdx == su->takeIdx) {
-
 			set_current_state(TASK_INTERRUPTIBLE);
 			if (file->f_flags & O_NONBLOCK) {
 				ret = -EAGAIN;
@@ -146,15 +132,12 @@ static ssize_t dcp_read(struct file * file, char * buf, size_t nbytes, loff_t *p
 				ret = -ERESTARTSYS;
 				break;
 			}
-
 			spin_unlock_irqrestore(&pDcp->lock, flags);
 			schedule();
 			spin_lock_irqsave(&pDcp->lock, flags);
 		}
-
 		set_current_state(TASK_RUNNING);
 		remove_wait_queue(&pDcp->read_wait, &wait);
-
 		if(ret) {
 			spin_unlock_irqrestore(&pDcp->lock, flags);
 			return ret;
@@ -165,19 +148,14 @@ static ssize_t dcp_read(struct file * file, char * buf, size_t nbytes, loff_t *p
 		spin_unlock_irqrestore(&pDcp->lock, flags);
 		return -ENODEV;
 	}
-
 	dp = buf;
 	do {
-
 		if(pDcp->putIdx > su->takeIdx)
 			n = pDcp->putIdx - su->takeIdx;
 		else
 			n = sizeof(pDcp->ringBuf) - su->takeIdx;
-
-		if (n > nbytes) {
+		if (n > nbytes)
 			n = nbytes;
-		}
-
 		spin_unlock_irqrestore(&pDcp->lock, flags);
 		if(copy_to_user(dp, &pDcp->ringBuf[su->takeIdx], n)) {
 			ret = -EFAULT;
@@ -188,23 +166,19 @@ static ssize_t dcp_read(struct file * file, char * buf, size_t nbytes, loff_t *p
 
 		su->takeIdx += n;
 		if(su->takeIdx == sizeof(pDcp->ringBuf))
-		su->takeIdx = 0;
+			su->takeIdx = 0;
 
 		dp += n;
 		nbytes -= n;
 
 	} while (nbytes && (pDcp->putIdx != su->takeIdx));
-
 	spin_unlock_irqrestore(&pDcp->lock, flags);
-
 	if(!ret) {
 		ret = dp - buf;
-
 		if(ret) {
 			TOUCH_ATIME(file);
 		}
 	}
-
 	return ret;
 }
 
@@ -216,9 +190,8 @@ static int dcp_open(struct inode* inode, struct file*  file)
 	unsigned long flags, flags2;
 
 	su = kmalloc(sizeof(*su), GFP_KERNEL);
-	if(!su) {
+	if(!su)
 		return -ENOMEM;
-	}
 	memset(su, 0, sizeof(*su));
 
 	su->minor = minor;
@@ -230,23 +203,18 @@ static int dcp_open(struct inode* inode, struct file*  file)
 			break;
 		}
 	}
-
 	if(su->pDcp) {
 		spin_lock_irqsave(&su->pDcp->lock, flags2);
 		list_add(&su->entry, &su->pDcp->units);
 		su->takeIdx = su->pDcp->putIdx;
 		spin_unlock_irqrestore(&su->pDcp->lock, flags2);
 	}
-
 	spin_unlock_irqrestore(&dcp_lock, flags);
-
 	if(!su->pDcp) {
 		kfree(su);
 		return -ENODEV;
 	}
-
 	file->private_data = su;
-
 	return 0;
 }
 
@@ -258,7 +226,6 @@ static int dcp_release(struct inode* inode, struct file*  file)
 
 	if(pDcp) {
 		dcp_fasync(-1, file, 0);
-
 		spin_lock_irqsave(&pDcp->lock, flags);
 		list_del(&su->entry);
 		su->takeIdx = -1;
@@ -268,9 +235,7 @@ static int dcp_release(struct inode* inode, struct file*  file)
 		OsSleep(100);
 #endif
 	}
-
 	kfree(su);
-
 	return 0;
 }
 
@@ -301,9 +266,8 @@ static void call_dcp_daemon(int instNum, char *action)
 #else
 	i = call_usermodehelper(argv[0], argv, envp, 1);
 #endif
-	if(i && (i != SIGTERM)) {
+	if(i && (i != SIGTERM))
 		printk(KERN_ERR"%s: %s returned %d\n", __FUNCTION__, argv[0], i);
-	}
 }
 
 static int dcpmajor = CNXTDCPMAJOR;
@@ -314,8 +278,7 @@ MODULE_PARM(dcpmajor, "i");
 #endif
 MODULE_PARM_DESC(dcpmajor, "Major device number for dcp device");
 
-__shimcall__
-void DcpDestroy  (HANDLE hDcp)
+__shimcall__ void DcpDestroy  (HANDLE hDcp)
 {
 	dcp_instance_t *pDcp = hDcp;
 	int i;
@@ -346,7 +309,7 @@ void DcpDestroy  (HANDLE hDcp)
 		spin_unlock_irqrestore(&pDcp->lock, flags);
 		if(i >= 1) {
 			if((i % 20) == 10)
-			printk(KERN_ERR"%s: units still active, waiting..\n", __FUNCTION__);
+				printk(KERN_ERR"%s: units still active, waiting..\n", __FUNCTION__);
 			kill_fasync(&pDcp->fasync, SIGIO, POLL_IN);
 			wake_up_interruptible_all(&pDcp->read_wait);
 		}
@@ -367,13 +330,11 @@ void DcpDestroy  (HANDLE hDcp)
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,2)
 	if (!IS_ERR(dcp_class))
-	CLASS_DEVICE_DESTROY(dcp_class, MKDEV(dcpmajor, pDcp->pDevNode->hwInstNum));
+		CLASS_DEVICE_DESTROY(dcp_class, MKDEV(dcpmajor, pDcp->pDevNode->hwInstNum));
 #endif
 #endif
-
 	kfree(pDcp);
 }
-
 
 static struct file_operations dcp_fops = {
 	.owner	= THIS_MODULE,
@@ -395,7 +356,7 @@ __shimcall__ HANDLE DcpCreate(HANDLE hDevNode)
 
 	pDcp = kmalloc(sizeof(*pDcp), GFP_KERNEL);
 	if(!pDcp)
-	return NULL;
+		return NULL;
 	memset(pDcp, 0, sizeof(*pDcp));
 
 	spin_lock_init(&pDcp->lock);
@@ -531,7 +492,7 @@ __shimcall__ int OsDcpInit(void)
 	if (IS_ERR(dcp_class)) {
 		printk(KERN_ERR "%s: cannot create simple class (%ld)\n", __FUNCTION__, PTR_ERR(dcp_class));
 		if(dcpmajor > 0)
-		unregister_chrdev(dcpmajor, CNXTTARGET"dcp");
+			unregister_chrdev(dcpmajor, CNXTTARGET"dcp");
 		return PTR_ERR(dcp_class);
 	}
 #endif

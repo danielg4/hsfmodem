@@ -728,7 +728,6 @@ static irqreturn_t irq_uart_tx_chars(int irq, void *dev_id){
 	return IRQ_HANDLED;
 }
 
-
 static int cnxt_startup(struct uart_port *port
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 , struct uart_info *info
@@ -776,7 +775,7 @@ static int cnxt_startup(struct uart_port *port
 #ifdef USE_DCP
 	OsDcpEnsureDaemonIsRunning(inst->devnode->hwInstNum);
 #endif
-	printk(KERN_DEBUG "%s %p\n", __FUNCTION__,port);
+	//printk(KERN_DEBUG "%s %p\n", __FUNCTION__,port);
 	return 0;
 }
 
@@ -891,7 +890,7 @@ cnxt_set_termios(struct uart_port *port, struct termios *termios, struct termios
 
 	//cnxt_control(inst, COMCTRL_CONTROL_PORTCONFIG, &port_config);
 	
-	printk(KERN_DEBUG "%s %d %08X\n", __FUNCTION__,port_config.dwDteSpeed,termios->c_cflag);
+	//printk(KERN_DEBUG "%s %d %08X\n", __FUNCTION__,port_config.dwDteSpeed,termios->c_cflag);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
 	uart_update_timeout(port, termios->c_cflag, port_config.dwDteSpeed);
 #endif
@@ -907,8 +906,7 @@ static void cnxt_release_port(struct uart_port *port)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 
-	printk(KERN_DEBUG "%s\n", __FUNCTION__);
-
+	//printk(KERN_DEBUG "%s\n", __FUNCTION__);
 	if(inst->port != port)
 		printk(KERN_ERR"%s: inst->port(%p) != port(%p), i=%d cnxt_ports=%p\n", __FUNCTION__, inst->port, port, (int)(port - cnxt_ports), cnxt_ports);
 	inst->port = NULL;
@@ -918,7 +916,7 @@ static int cnxt_request_port(struct uart_port *port)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 
-	printk(KERN_DEBUG "%s\n", __FUNCTION__);
+	//printk(KERN_DEBUG "%s\n", __FUNCTION__);
 	if(!inst->port)
 		inst->port = port;
 	else {
@@ -934,7 +932,7 @@ static int cnxt_request_port(struct uart_port *port)
 
 static void cnxt_config_port(struct uart_port *port, int flags)
 {
-	printk(KERN_DEBUG "%s\n", __FUNCTION__);
+	//printk(KERN_DEBUG "%s\n", __FUNCTION__);
 	if (flags & UART_CONFIG_TYPE && cnxt_request_port(port) == 0)
 		port->type = PORT_CNXT;
 }
@@ -976,18 +974,15 @@ static int cnxt_ioctl_port(struct uart_port *port, unsigned int cmd, unsigned lo
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 	ioctl_arg_t args;
 	
-	printk(KERN_DEBUG "%s %lu\n", __FUNCTION__,cmd);
+	//printk(KERN_DEBUG "%s %lu\n", __FUNCTION__,cmd);
 	switch(cmd){
-		case TCGETS:
+		default:
 			break;
-		case TCFLSH:
-			break;
-		case TCSETS:
-			break;
-		case 1234:
+		case CXT_USERSIGNAL:
 			if (copy_from_user(&args, (ioctl_arg_t *)arg, sizeof(ioctl_arg_t))) 
 				return -EACCES;
 			inst->user_pid = args.pid;
+			ret = 0;
 			break;
 	}
 	return ret;
@@ -1088,6 +1083,30 @@ MODULE_PARM_DESC(loglastcallstatus, "Log AT#UG command output after each connect
 	{
 		return single_open(filp, cnxt_get_hwrevision, NULL);
 	}
+
+	static int cnxt_get_lastcallstatus(struct seq_file *s, void *data){
+		struct cnxt_serial_inst *inst = &cnxt_serial_inst[cnxt_serial_shared_memory->hwInstNum];		
+		PORT_MONITOR_DATA monitorData;
+		int len = PAGE_SIZE;
+		char *page;
+		
+		page = cnxt_serial_shared_memory->buf;
+		monitorData.dwSize = PAGE_SIZE;
+		monitorData.pBuf = page;
+
+		if (cnxt_monitor(inst, COMCTRL_MONITOR_POUND_UG, &monitorData) != COM_STATUS_SUCCESS)
+			page[0] = '\0';
+		else
+			page[len-1] = '\0';
+		seq_printf(s, "%s\n", page);
+		return 0;
+	}
+	
+	static int cnxt_proc_open_lastcallstatus(struct inode *inode, struct file *filp)
+	{
+		return single_open(filp, cnxt_get_lastcallstatus, NULL);
+	}
+	
 	
 	static const struct file_operations cnxt_proc_ops_hwinst = {
 		.owner = THIS_MODULE,
@@ -1108,6 +1127,14 @@ MODULE_PARM_DESC(loglastcallstatus, "Log AT#UG command output after each connect
 	static const struct file_operations cnxt_proc_ops_hwrevision = {
 		.owner = THIS_MODULE,
 		.open = cnxt_proc_open_hwrevision,
+		.llseek = seq_lseek,
+		.read = seq_read,
+		.release = single_release,		
+	};
+
+	static const struct file_operations cnxt_proc_ops_lastcallstatus = {
+		.owner = THIS_MODULE,
+		.open = cnxt_proc_open_lastcallstatus,
 		.llseek = seq_lseek,
 		.read = seq_read,
 		.release = single_release,		
@@ -1407,7 +1434,7 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 			inst->proc_hwprofile = proc_create_data("hwprofile", 0, inst->proc_unit_dir, &cnxt_proc_ops_hwprofile, inst);
 			inst->proc_hwrevision = proc_create_data("hwrevision", 0, inst->proc_unit_dir, &cnxt_proc_ops_hwrevision, inst);
 #ifdef COMCTRL_MONITOR_POUND_UG_SUPPORT
-			//inst->proc_lastcallstatus = proc_create_data("lastcallstatus", 0, inst->proc_unit_dir, &cnxt_proc_ops_lastcallstatus, inst);
+			inst->proc_lastcallstatus = proc_create_data("lastcallstatus", 0, inst->proc_unit_dir, &cnxt_proc_ops_lastcallstatus, inst);
 #endif
 #else
 			inst->proc_hwinst = create_proc_read_entry("hwinst", 0, inst->proc_unit_dir, cnxt_get_hwinst, inst);
@@ -1537,7 +1564,7 @@ static int __init cnxt_serial_init(void)
 		return ret;
 
 	//fixme add new memory allocation ring 0 memory
-	i=(sizeof(struct cnxt_serial_inst) + sizeof(struct uart_port)) * NR_PORTS + sizeof(struct _cnxt_serial_shared_memory) + CNXT_READBUF_SIZE * 2;
+	i=(sizeof(struct cnxt_serial_inst) + sizeof(struct uart_port)) * NR_PORTS + sizeof(struct _cnxt_serial_shared_memory) + PAGE_SIZE*2;
 	cnxt_serial_inst = (struct cnxt_serial_inst *)kmalloc(i,GFP_KERNEL);
 	if(cnxt_serial_inst == NULL){
 		printk(KERN_ERR "%s: bad allocation cnxt_serial_inst \n", __FUNCTION__);

@@ -73,7 +73,7 @@ typedef struct {
 
 #define CNXT_IOCTL_MAGIC 'G'
 /* ioctl commands */
-#define CXT_MALLOC	_IOWR(CNXT_IOCTL_MAGIC, 0, ioctl_arg_t)
+#define CXT_USERSIGNAL	_IOWR(CNXT_IOCTL_MAGIC, 0, ioctl_arg_t)
 
 #ifdef __cplusplus
 extern "C"

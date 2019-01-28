@@ -23,7 +23,6 @@ __used
 __attribute__((section("__versions"))) = {
 	{ 0x525b86d, __VMLINUX_SYMBOL_STR(module_layout) },
 	{ 0xbdc6b187, __VMLINUX_SYMBOL_STR(cpu_tss) },
-	{ 0x6dc7dc1e, __VMLINUX_SYMBOL_STR(kmalloc_caches) },
 	{ 0xd2b09ce5, __VMLINUX_SYMBOL_STR(__kmalloc) },
 	{ 0xe2addb2d, __VMLINUX_SYMBOL_STR(uart_write_wakeup) },
 	{ 0x349cba85, __VMLINUX_SYMBOL_STR(strchr) },
@@ -71,9 +70,9 @@ __attribute__((section("__versions"))) = {
 	{ 0x1b7a2673, __VMLINUX_SYMBOL_STR(uart_handle_dcd_change) },
 	{ 0x242e722e, __VMLINUX_SYMBOL_STR(make_kuid) },
 	{ 0xdb7305a1, __VMLINUX_SYMBOL_STR(__stack_chk_fail) },
+	{ 0xa202a8e5, __VMLINUX_SYMBOL_STR(kmalloc_order_trace) },
 	{ 0x2ea2c95c, __VMLINUX_SYMBOL_STR(__x86_indirect_thunk_rax) },
 	{ 0xbdfb6dbb, __VMLINUX_SYMBOL_STR(__fentry__) },
-	{ 0x26932b93, __VMLINUX_SYMBOL_STR(kmem_cache_alloc_trace) },
 	{ 0x680ec266, __VMLINUX_SYMBOL_STR(_raw_spin_lock_irqsave) },
 	{ 0xf9ac7839, __VMLINUX_SYMBOL_STR(init_pid_ns) },
 	{ 0xf726356c, __VMLINUX_SYMBOL_STR(proc_create_data) },
@@ -101,4 +100,4 @@ __attribute__((section(".modinfo"))) =
 "depends=hsfosspec,hsfengine";
 
 
-MODULE_INFO(srcversion, "15FEA04790496E31C0F6C82");
+MODULE_INFO(srcversion, "4623A7931318BEE74C9BD99");
