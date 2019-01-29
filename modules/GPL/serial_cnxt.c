@@ -166,12 +166,15 @@ struct cnxt_serial_inst {
 		unsigned int evt_rxbreak:1;
 		unsigned int evt_rxovrn:1;
 		unsigned int evt_txempty:1;
-		unsigned int evt_ring:1;
+		unsigned int evt_ring:1;		
 	};
 	unsigned char readbuf[CNXT_READBUF_SIZE];
-	int readcount, readoffset;
-	int irq;
-	int user_pid;
+	int readcount, readoffset;	
+	struct{
+		unsigned int dwEvtMask[10];
+		unsigned char count;
+		int user_pid;
+	} signal;
 	OSSCHED intr_tqueue;
 #ifdef CONFIG_PROC_FS
 	struct proc_dir_entry *proc_unit_dir;
@@ -204,6 +207,12 @@ static struct _cnxt_serial_shared_memory{
 
 #ifdef COMCTRL_MONITOR_POUND_UG_SUPPORT
 static int loglastcallstatus;
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
+static DECLARE_MUTEX(cnxt_port_sem);
+#else
+static DEFINE_SEMAPHORE(cnxt_port_sem);
 #endif
 
 //06/12/2018
@@ -485,17 +494,56 @@ static int cnxt_tx_ready(struct cnxt_serial_inst *inst) {
 //fixme
 static void cnxt_intr(void *dev_id)
 {
-	int pass_counter,tx_ready;
+	int i;
 	struct cnxt_serial_inst *inst = (struct cnxt_serial_inst *)dev_id;
 	
 	//printk(KERN_DEBUG "%s:\n", __FUNCTION__);
 	inst->transmit=0;
-	for (pass_counter = 0;pass_counter < CNXT_ISR_PASS_LIMIT && inst->uart_info && !inst->transmit;pass_counter++) {
+	for (i = 0;i < CNXT_ISR_PASS_LIMIT && inst->uart_info && !inst->transmit;i++) {
 		if(cnxt_tx_ready(inst))
 			cnxt_tx_chars(inst);
 		if(cnxt_rx_ready(inst))
 			cnxt_rx_chars(inst);		
 	}
+	
+	if(inst->signal.count){
+		unsigned long flags;
+		
+		spin_lock_irqsave(&inst->lock, flags);
+		
+		unsigned int dwEvtMask = inst->signal.dwEvtMask[0];
+		for(i=0,inst->signal.count--;i<inst->signal.count;i++)
+			inst->signal.dwEvtMask[i] = inst->signal.dwEvtMask[i+1];
+		
+		spin_unlock_irqrestore(&inst->lock, flags);
+		
+		if(inst->signal.user_pid != 0){
+			struct siginfo info={0};
+			struct task_struct *t;
+					
+			rcu_read_lock();		
+			t = pid_task(find_pid_ns(inst->signal.user_pid, &init_pid_ns), PIDTYPE_PID);
+			if (t != NULL) {
+				int err;
+				
+				info.si_signo = 44;
+				info.si_code = SI_QUEUE;
+				info.si_int = dwEvtMask;
+				
+				rcu_read_unlock();      
+				if (err = send_sig_info(44, &info, t) < 0)
+					printk("send_sig_info error %d\n",err);
+			} 
+			else {
+				printk("pid_task error\n");
+				inst->signal.user_pid = 0;
+				rcu_read_unlock();
+				//return -ENODEV;
+			}
+		}	
+		
+	}
+	
 	OsModuleUseCountDec();
 	OsThreadScheduleDone();
 }
@@ -503,7 +551,7 @@ static void cnxt_intr(void *dev_id)
 static u_int cnxt_tx_empty(struct uart_port *port)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
-	printk(KERN_ERR "%s: \n", __FUNCTION__);
+	//printk(KERN_ERR "%s: \n", __FUNCTION__);
 	return inst->evt_txempty ? TIOCSER_TEMT : 0;
 }
 
@@ -575,7 +623,7 @@ static void cnxt_break_ctl(struct uart_port *port, int break_state)
 {
 	struct cnxt_serial_inst *inst = &cnxt_serial_inst[(port - cnxt_ports) / sizeof(struct uart_port)];
 
-	printk(KERN_DEBUG "%s: break_state=%d\n", __FUNCTION__, break_state);
+	//printk(KERN_DEBUG "%s: break_state=%d\n", __FUNCTION__, break_state);
 	cnxt_control(inst, break_state ? COMCTRL_CONTROL_SET_BREAK_ON : COMCTRL_CONTROL_SET_BREAK_OFF, 0);
 }
 
@@ -590,12 +638,12 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 	orig_mctrl_flags = mctrl_flags = inst->mctrl_flags;
 	if((dwEvtMask & COMCTRL_EVT_RXCHAR)) {
 		inst->evt_rxchar = 1;		
-		sched_intr = 1;
+		sched_intr |= 3;		
 	}
 
 	if(dwEvtMask & COMCTRL_EVT_BREAK) {
 		inst->evt_rxbreak = 1;
-		sched_intr = 1;
+		sched_intr |= 1;		
 	}
 
 	if((dwEvtMask & COMCTRL_EVT_RXOVRN)) {
@@ -609,7 +657,7 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 
 	if((dwEvtMask & COMCTRL_EVT_TXEMPTY)) {
 		inst->evt_txempty = 1;
-		sched_intr = 1;
+		sched_intr |= 3;
 	}
 
 	if((dwEvtMask & COMCTRL_EVT_CTS)) {
@@ -693,37 +741,14 @@ __shimcall__ static void cnxt_event_handler(struct cnxt_serial_inst *inst, UINT3
 #endif
 		}
 	}
-
+	//mutex
+	if((sched_intr & 2) && inst->signal.count < sizeof(inst->signal.dwEvtMask) / sizeof(unsigned int))
+		inst->signal.dwEvtMask[inst->signal.count++] = dwEvtMask;
 	if(port && sched_intr)
-		cnxt_sched_intr(inst);
-	
-	if(inst->user_pid != 0){
-		struct siginfo info={0};
-		struct task_struct *t;
-				
-		rcu_read_lock();		
-		t = pid_task(find_pid_ns(inst->user_pid, &init_pid_ns), PIDTYPE_PID);
-		if (t != NULL) {
-			int err;
-		info.si_signo = 44;
-		info.si_code = SI_QUEUE;
-		info.si_int = dwEvtMask;
-			
-			rcu_read_unlock();      
-			if (err = send_sig_info(44, &info, t) < 0)
-				printk("send_sig_info error %d\n",err);
-		} 
-		else {
-			printk("pid_task error\n");
-			inst->user_pid = 0;
-			rcu_read_unlock();
-			//return -ENODEV;
-		}
-	}
+		cnxt_sched_intr(inst);		
 }
 
-static irqreturn_t irq_uart_tx_chars(int irq, void *dev_id){
-	
+static irqreturn_t irq_uart_tx_chars(int irq, void *dev_id){	
 	printk(KERN_DEBUG "%s: (%d)\n", __FUNCTION__, irq);
 	return IRQ_HANDLED;
 }
@@ -813,12 +838,10 @@ static void cnxt_change_speed(struct uart_port *port, u_int cflag, u_int iflag, 
 	printk(KERN_DEBUG "%s\n", __FUNCTION__);
 
 	memset(&port_config, 0, sizeof(port_config));
-
 	if(quot) {
 		port_config.dwDteSpeed = port->uartclk / (16 * quot);
 		port_config.dwValidFileds |= PC_DTE_SPEED;
 	}
-
 	if(cflag & PARENB) {
 		if(cflag & PARODD)
 			port_config.eParity = PC_PARITY_ODD;
@@ -981,7 +1004,7 @@ static int cnxt_ioctl_port(struct uart_port *port, unsigned int cmd, unsigned lo
 		case CXT_USERSIGNAL:
 			if (copy_from_user(&args, (ioctl_arg_t *)arg, sizeof(ioctl_arg_t))) 
 				return -EACCES;
-			inst->user_pid = args.pid;
+			inst->signal.user_pid = args.pid;
 			ret = 0;
 			break;
 	}
@@ -1235,12 +1258,6 @@ static int cnxt_get_lastcallstatus(char *page, char **start, off_t offset, int l
 
 
 #ifndef FOUND_UART_REGISTER_PORT
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
-static DECLARE_MUTEX(cnxt_port_sem);
-#else
-static DEFINE_SEMAPHORE(cnxt_port_sem);
-#endif
-
 
 /**
 *	uart_register_port - register a serial port
@@ -1369,7 +1386,7 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 	inst->rxenabled = 0;
 	inst->txenabled = 0;
 	inst->readcount = inst->readoffset = 0;
-	inst->irq = irq;
+//	inst->irq = irq;
 	
 	OsThreadScheduleInit(&inst->intr_tqueue, cnxt_intr, inst);
 

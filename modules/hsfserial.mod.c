@@ -100,4 +100,4 @@ __attribute__((section(".modinfo"))) =
 "depends=hsfosspec,hsfengine";
 
 
-MODULE_INFO(srcversion, "4623A7931318BEE74C9BD99");
+MODULE_INFO(srcversion, "01B63D3939944F44FCA5287");
