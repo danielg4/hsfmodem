@@ -1024,10 +1024,15 @@ static void TimerThreadFunction(void* pData)
 	OsThreadScheduleDone();
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 static void TimeOutHandler(unsigned long Data)
 {
     PTIME_OUT_INSTANCE_T	pTimeOutInstance = (PTIME_OUT_INSTANCE_T)Data;
-
+#else
+static void TimeOutHandler(struct timer_list* t)
+{
+    PTIME_OUT_INSTANCE_T	pTimeOutInstance = (PTIME_OUT_INSTANCE_T)from_timer(pTimeOutInstance, t, Timer);
+#endif
     if(test_bit(TASK_DELETE, (void*)&pTimeOutInstance->bLocked)) {
 	return;
     }
@@ -1038,6 +1043,9 @@ static void TimeOutHandler(unsigned long Data)
 	}
     }
 }
+#if NULL
+}
+#endif
 
 static INT32 ntimers;
 
@@ -1063,10 +1071,14 @@ HOSTIMER OsCreatePeriodicTimer(IN UINT32 InitialTimeOut, IN PCBFUNC pTimeOutCall
     pTimeOutInstance->bLocked = 0;
     pTimeOutInstance->mSec = InitialTimeOut;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
     init_timer(&pTimeOutInstance->Timer);
 
     pTimeOutInstance->Timer.function = TimeOutHandler;
     pTimeOutInstance->Timer.data = (unsigned long)pTimeOutInstance;
+#else
+	timer_setup(&pTimeOutInstance->Timer, TimeOutHandler, 0);
+#endif
     pTimeOutInstance->Timer.expires = jiffies;
 
     if(OsAtomicIncrement(&ntimers) == 1) {
@@ -1242,7 +1254,17 @@ typedef struct TIMER_TAG
 {
     UINT32 msec;
     struct timer_list timer;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+	PVOID function, data;
+#endif
 } TIMER_T, *PTIMER_T;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+void TimerProxy(struct timer_list* t){
+	PTIMER_T pTimer = from_timer(pTimer, t, timer);
+	pTimer->function(pTimer->data);
+}
+#endif
 
 __shimcall__
 HANDLE OsCreateTimer(UINT32 msec, __kernelcall__ PVOID pCBFunc, PVOID pRefData)
@@ -1265,9 +1287,15 @@ HANDLE OsCreateTimer(UINT32 msec, __kernelcall__ PVOID pCBFunc, PVOID pRefData)
 
     memset(pTimer,0,sizeof(TIMER_T));
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
     init_timer(&(pTimer->timer));
     pTimer->timer.function = pCBFunc ;
     pTimer->timer.data = (unsigned long)pRefData;
+#else
+    pTimer->function = pCBFunc;
+    pTimer->data = pRefData;
+	timer_setup(&pTimer->timer, TimerProxy, 0);
+#endif
     pTimer->timer.expires = jiffies + MSECS_TO_TICKS(msec);
     pTimer->msec = msec;
     return ((HANDLE)pTimer);
