@@ -134,6 +134,11 @@ static int errno;
 #define init_kthread_worker kthread_init_worker
 #define init_kthread_work kthread_init_work
 #define queue_kthread_work kthread_queue_work
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4,9,0)
+static inline void clts(void){
+	asm volatile("clts");
+}
+#endif
 #endif
 
 /*
