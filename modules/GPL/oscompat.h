@@ -83,6 +83,10 @@ static int errno;
 #endif
 
 #include <linux/sched.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+#include<linux/sched/signal.h>
+#include<linux/sched/types.h>
+#endif
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/interrupt.h>
@@ -124,6 +128,12 @@ static int errno;
 #include <asm/bitops.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
 #include <asm/system.h>
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+#define init_kthread_worker kthread_init_worker
+#define init_kthread_work kthread_init_work
+#define queue_kthread_work kthread_queue_work
 #endif
 
 /*
