@@ -1043,7 +1043,7 @@ static void TimeOutHandler(struct timer_list* t)
 	}
     }
 }
-#if NULL
+#if FALSE
 }
 #endif
 
@@ -1255,7 +1255,8 @@ typedef struct TIMER_TAG
     UINT32 msec;
     struct timer_list timer;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-	PVOID function, data;
+	void (*function)(unsigned long);
+	unsigned long data;
 #endif
 } TIMER_T, *PTIMER_T;
 
@@ -1293,7 +1294,7 @@ HANDLE OsCreateTimer(UINT32 msec, __kernelcall__ PVOID pCBFunc, PVOID pRefData)
     pTimer->timer.data = (unsigned long)pRefData;
 #else
     pTimer->function = pCBFunc;
-    pTimer->data = pRefData;
+    pTimer->data = (unsigned long)pRefData;
 	timer_setup(&pTimer->timer, TimerProxy, 0);
 #endif
     pTimer->timer.expires = jiffies + MSECS_TO_TICKS(msec);
