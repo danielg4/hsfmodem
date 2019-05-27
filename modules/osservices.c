@@ -44,6 +44,7 @@
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#include <linux/ktime.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39))
 #include <linux/smp_lock.h>
 #endif
@@ -1195,16 +1196,16 @@ void OsImmediateTimeOut(IN HOSTIMER hTimeOut)
     mod_timer(&pTimeOutInstance -> Timer, jiffies);
 }
 
-static time_t epoch = 0;
+static time64_t epoch = 0;
 
 __shimcall__
 UINT32 OsGetSystemTime(void)
 {
-    struct timeval		timestamp;
+    ktime_t timestamp;
 
-    do_gettimeofday(&timestamp);
+    timestamp = ktime_get();
 
-    return ((timestamp.tv_sec-epoch)*1000 + timestamp.tv_usec/1000);
+    return ((timestamp / 1000) - epoch);
 }
 
 __shimcall__
@@ -1374,29 +1375,29 @@ GLOBAL DWORD  OsGetProcessorFreq(void)
 #ifndef PROCFREQ_FROM_KERNEL
 static unsigned long OsCalcCpuRate(void)
 {
-    struct timeval tv;
+    ktime_t tv;
     unsigned long flags;
     unsigned long time1, time2, cpurate;
     unsigned int target_usec;
 
     // first ensure that the tv_usec will not wraparound
-    do_gettimeofday( &tv );
+    tv = ktime_get();
 
     if ( tv.tv_usec > 990000 ) {
 	do
 	{
-	    do_gettimeofday( &tv );
+		tv = ktime_get();
 	} while ( tv.tv_usec > 990000 );
     }
 
     local_irq_save(flags);
     // calc the cpu rate 
-    do_gettimeofday( &tv );
+    tv = ktime_get();
     rdtscl(time1);
     target_usec = tv.tv_usec + 1000;
     do
     {
-	do_gettimeofday( &tv );
+    tv = ktime_get();
     } while ( tv.tv_usec < target_usec );
     rdtscl(time2);
 
@@ -1432,10 +1433,7 @@ UINT32 OsReadCpuCnt(void)
 __shimcall__
 int OsInit(void)
 {
-    struct timeval timestamp;
-    do_gettimeofday(&timestamp);
-
-    epoch = timestamp.tv_sec;
+    epoch = ktime_get_seconds();
 
 #if ! TARGET_HCF_FAMILY
 #ifdef PROCFREQ_FROM_KERNEL_CONSTANT
@@ -1447,10 +1445,10 @@ int OsInit(void)
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0) )
     if(sizeof(OSSCHED) <= sizeof(struct kwork_data)) {
-        OsErrorPrintf("OSSCHED too small (%d < %d)\n", sizeof(OSSCHED), sizeof(struct kwork_data));
+        OsErrorPrintf("OSSCHED too small (%lu < %lu)\n", sizeof(OSSCHED), sizeof(struct kwork_data));
 #else
     if(sizeof(OSSCHED) <= sizeof(struct tq_struct)) {
-        OsErrorPrintf("OSSCHED too small (%d < %d)\n", sizeof(OSSCHED), sizeof(struct tq_struct));
+        OsErrorPrintf("OSSCHED too small (%lu < %lu)\n", sizeof(OSSCHED), sizeof(struct tq_struct));
 #endif
         return -ENOSPC;
     }
