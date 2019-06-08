@@ -87,11 +87,11 @@ KERNELARCH := $(subst i386,x86,$(subst x86_64,x86,$(IMPORTED_ARCH)))
 # Starting 2.6.28, most include/asm headers were moved to arch/<arch>/include/asm
 REAL_KERNELSRC_INCLUDE_ASM := $(shell for p in $(CNXT_KERNELSRC)/include2/asm $(REAL_KERNELSRC)/arch/$(KERNELARCH)/include/asm; do if test -e $${p}; then echo $${p}; exit 0; fi; done; for p in arch/$(KERNELARCH)/include/asm include/asm; do if test -e $(CNXT_KERNELSRC)/$${p}; then echo $(REAL_KERNELSRC)/$${p}; exit 0; fi; done;)
 
-ifeq ($(CNXTTARGET),hsf)
+#ifeq ($(CNXTTARGET),hsf)
 REPLACE_HDA := true
-else
-REPLACE_HDA := false
-endif
+#else
+#REPLACE_HDA := false
+#endif
 
 # Configure compiler (on some systems, kgcc must be used to compile kernel code)
 #
@@ -159,7 +159,7 @@ ifeq ($(ON_BUILD_SYSTEM)-$(CONFIG_SND_HDA_INTEL),no-)
 CONFIG_SND_HDA_INTEL=$(shell modprobe -n snd-hda-intel > /dev/null 2>&1 && echo y || echo n)
 endif
 
-MODULAR_HDA := $(shell test -e  ${REAL_KERNELSRC}/include/sound/hda_codec.h && echo yes || echo no)
+#MODULAR_HDA := $(shell test -e  ${REAL_KERNELSRC}/include/sound/hda_codec.h && echo yes || echo no)
 
 else
 KO= o

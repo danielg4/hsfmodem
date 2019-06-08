@@ -3,6 +3,7 @@
 *.mod
 *.mod.c
 *.o
+*.o.d
 
 /*.tar.gz
 /build
