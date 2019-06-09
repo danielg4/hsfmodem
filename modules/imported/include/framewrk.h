@@ -215,7 +215,8 @@
 #define OCT_MEM_MGR	0
 #define USE_MEM_MGR	0
 #define USE_PRAGMA_PACK	0
-#define USE_DIRECT_API 1                                                      
+#define USE_DIRECT_API 1
+
 #ifdef __x86_64__
 #define PORTABILITY 1
 #else

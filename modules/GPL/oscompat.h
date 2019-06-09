@@ -695,11 +695,11 @@ kill_proc(pid_t pid, int sig, int priv)
 }
 #endif
 
-#ifdef FOUND_STRUCT_TTY_PORT
-#define UART_INFO_TO_TTY(ui) (ui->port.tty)
-#else
-#define UART_INFO_TO_TTY(ui) (ui->tty)
-#endif
+	#ifdef FOUND_STRUCT_TTY_PORT
+		#define UART_INFO_TO_TTY(ui) (ui->port.tty)
+	#else
+		#define UART_INFO_TO_TTY(ui) (ui->tty)
+	#endif
 
 #ifdef FOUND_NO_STRUCT_UART_INFO
 typedef struct uart_state uart_info_t;

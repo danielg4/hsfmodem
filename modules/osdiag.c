@@ -132,31 +132,30 @@ DMPSRV_Dispatcher(PCHAR ClientName, DMP_SERVER_CODE Code,
 
     spin_lock_irqsave(&dmp_instance->lock, flags);
     if(list_empty(&dmp_instance->units)) {
-	spin_unlock_irqrestore(&dmp_instance->lock, flags);
+		spin_unlock_irqrestore(&dmp_instance->lock, flags);
 	//printk(KERN_INFO "%s: device not opened (no daemon running?)\n", __FUNCTION__);
-	return FALSE;
+		return FALSE;
     }
 
     strncpy( dmp_instance->ringBuf[dmp_instance->putIdx].ClientName, ClientName, DMP_MAX_NAME_LEN );
     strncpy( dmp_instance->ringBuf[dmp_instance->putIdx].FileName, FileName, DMP_MAX_NAME_LEN );
     dmp_instance->ringBuf[dmp_instance->putIdx].Code = Code;
 
-    if ( pSegment != NULL )
-    {
-	if(nData > DMP_SEG_SIZE)
-	    nData = DMP_SEG_SIZE;
-	memcpy( dmp_instance->ringBuf[dmp_instance->putIdx].pData, pSegment, nData );
-	memset( dmp_instance->ringBuf[dmp_instance->putIdx].pData + nData, '\0', DMP_SEG_SIZE - nData );
+    if ( pSegment != NULL ){
+		if(nData > DMP_SEG_SIZE)
+			nData = DMP_SEG_SIZE;
+		memcpy( dmp_instance->ringBuf[dmp_instance->putIdx].pData, pSegment, nData );
+		memset( dmp_instance->ringBuf[dmp_instance->putIdx].pData + nData, '\0', DMP_SEG_SIZE - nData );
     }
 
     dmp_instance->ringBuf[dmp_instance->putIdx].nData = nData;
 
     dmp_instance->putIdx++;
     if (dmp_instance->putIdx == DMP_MAX_SEGMENTS) 
-	dmp_instance->putIdx = 0;
+		dmp_instance->putIdx = 0;
 
     if (dmp_instance->putIdx == dmp_instance->takeIdx)
-	printk(KERN_WARNING "%s: ring buffer overflow\n", __FUNCTION__);
+		printk(KERN_WARNING "%s: ring buffer overflow\n", __FUNCTION__);
 
     spin_unlock_irqrestore(&dmp_instance->lock, flags);
 
@@ -166,8 +165,7 @@ DMPSRV_Dispatcher(PCHAR ClientName, DMP_SERVER_CODE Code,
     return TRUE;
 }
 
-static ssize_t
-dmp_read(struct file * file, char * buf, size_t nbytes, loff_t *ppos)
+static ssize_t dmp_read(struct file * file, char * buf, size_t nbytes, loff_t *ppos)
 {
     PDMP_ACTION_INFO dpSegs;
     size_t nsegs = nbytes / sizeof(DMP_ACTION_INFO), n;
@@ -175,39 +173,38 @@ dmp_read(struct file * file, char * buf, size_t nbytes, loff_t *ppos)
     unsigned long flags;
 
     if(nsegs <= 0)
-	return 0;
+		return 0;
 
     spin_lock_irqsave(&dmp_instance->lock, flags);
 
     if((dmp_instance->putIdx == dmp_instance->takeIdx) && (dmp_instance->takeIdx >= 0)) {
-	DECLARE_WAITQUEUE(wait, current);
+		DECLARE_WAITQUEUE(wait, current);
 
-	add_wait_queue(&dmp_instance->read_wait, &wait);
+		add_wait_queue(&dmp_instance->read_wait, &wait);
 
-	while(dmp_instance->putIdx == dmp_instance->takeIdx) {
+		while(dmp_instance->putIdx == dmp_instance->takeIdx) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			if (file->f_flags & O_NONBLOCK) {
+				ret = -EAGAIN;
+				break;
+			}
+			if (signal_pending(current)) {
+				ret = -ERESTARTSYS;
+				break;
+			}
 
-	    set_current_state(TASK_INTERRUPTIBLE);
-	    if (file->f_flags & O_NONBLOCK) {
-		ret = -EAGAIN;
-		break;
-	    }
-	    if (signal_pending(current)) {
-		ret = -ERESTARTSYS;
-		break;
-	    }
+			spin_unlock_irqrestore(&dmp_instance->lock, flags);
+			schedule();
+			spin_lock_irqsave(&dmp_instance->lock, flags);
+		}
 
-	    spin_unlock_irqrestore(&dmp_instance->lock, flags);
-	    schedule();
-	    spin_lock_irqsave(&dmp_instance->lock, flags);
-	}
+		set_current_state(TASK_RUNNING);
+		remove_wait_queue(&dmp_instance->read_wait, &wait);
 
-	set_current_state(TASK_RUNNING);
-	remove_wait_queue(&dmp_instance->read_wait, &wait);
-
-	if(ret) {
-	    spin_unlock_irqrestore(&dmp_instance->lock, flags);
-	    return ret;
-	}
+		if(ret) {
+			spin_unlock_irqrestore(&dmp_instance->lock, flags);
+			return ret;
+		}
     }
 
     if((dmp_instance->putIdx < 0) || (dmp_instance->takeIdx < 0)) {
@@ -586,7 +583,7 @@ COM_STATUS OsDiagMgrClose(HANDLE hOsDiagMgr)
     unsigned long flags;
 
     if(diagdebug)
-	printk("%s: hOsDiagMgr=%p\n", __FUNCTION__, hOsDiagMgr);
+		printk("%s: hOsDiagMgr=%p\n", __FUNCTION__, hOsDiagMgr);
 
     if(pDiag) {
 	pDiag->pSys = NULL;
@@ -794,8 +791,7 @@ static void PutDiagInstance(diag_instance_t *pDiag)
     OsFree(pDiag);
 }
 
-__shimcall__
-void OsDiagExit(void)
+__shimcall__ void OsDiagExit(void)
 {
     diag_instance_t *pDiag;
     unsigned long flags;
@@ -807,40 +803,40 @@ void OsDiagExit(void)
     /* Free all diag_instances */
     spin_lock_irqsave(&diag_lock, flags);
     while(diag_instance_list.next != &diag_instance_list) {
-	pDiag = list_entry(diag_instance_list.next, diag_instance_t, entry);
+		pDiag = list_entry(diag_instance_list.next, diag_instance_t, entry);
 
-	list_del(&pDiag->entry);
-	spin_unlock_irqrestore(&diag_lock, flags);
+		list_del(&pDiag->entry);
+		spin_unlock_irqrestore(&diag_lock, flags);
 
-	PutDiagInstance(pDiag);
+		PutDiagInstance(pDiag);
 
-	spin_lock_irqsave(&diag_lock, flags);
+		spin_lock_irqsave(&diag_lock, flags);
     }
     spin_unlock_irqrestore(&diag_lock, flags);
 
 #if defined(DMP) || defined(DMPRETAIL)
     /* Free dmp_instance */
     if(dmp_instance) {
-	spin_lock_irqsave(&dmp_instance->lock, flags);
-	dmp_instance->putIdx = -2;
-	spin_unlock_irqrestore(&dmp_instance->lock, flags);
+		spin_lock_irqsave(&dmp_instance->lock, flags);
+		dmp_instance->putIdx = -2;
+		spin_unlock_irqrestore(&dmp_instance->lock, flags);
 
 	//call_diag_daemon(dmp_instance->hwInstNum, "stop");
 
 	spin_lock_irqsave(&dmp_instance->lock, flags);
 	for(i = 0; !list_empty(&dmp_instance->units); i++) {
 	    if(i == 1) {
-		list_for_each (e, &dmp_instance->units) {
-		    (list_entry(e, diag_unit_t, entry))->takeIdx = -1;
+			list_for_each (e, &dmp_instance->units) {
+				(list_entry(e, diag_unit_t, entry))->takeIdx = -1;
 		    //(list_entry(e, diag_unit_t, entry))->inst.pDmp = NULL;
-		}
+			}
 	    }
 	    spin_unlock_irqrestore(&dmp_instance->lock, flags);
 	    if(i >= 1) {
-		if((i % 20) == 10)
-		    printk(KERN_ERR"%s: units still active, waiting..\n", __FUNCTION__);
-		kill_fasync(&dmp_instance->fasync, SIGIO, POLL_IN);
-		wake_up_interruptible_all(&dmp_instance->read_wait);
+			if((i % 20) == 10)
+				printk(KERN_ERR"%s: units still active, waiting..\n", __FUNCTION__);
+			kill_fasync(&dmp_instance->fasync, SIGIO, POLL_IN);
+			wake_up_interruptible_all(&dmp_instance->read_wait);
 	    }
 	    OsSleep(100);
 	    spin_lock_irqsave(&dmp_instance->lock, flags);
@@ -849,7 +845,7 @@ void OsDiagExit(void)
 
 	OsFree(dmp_instance);
 	dmp_instance = NULL;
-    }
+}
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
     devfs_unregister(dmp_devfs_handle);
@@ -878,16 +874,17 @@ int OsDiagInit(void)
     int ret;
 
     if(diagmajor == 0) {
-	diagmajor = devfs_register_chrdev(0, CNXTTARGET"diag", &diag_fops);
-    } else if((ret=devfs_register_chrdev(diagmajor, CNXTTARGET"diag", &diag_fops))) {
-	diagmajor = ret;
+		diagmajor = devfs_register_chrdev(0, CNXTTARGET"diag", &diag_fops);
+    } 
+	else if((ret=devfs_register_chrdev(diagmajor, CNXTTARGET"diag", &diag_fops))) {
+		diagmajor = ret;
     }
 
     if(diagmajor < 0) {
-	printk(KERN_ERR "%s: cannot register chrdev (%d)\n", __FUNCTION__, diagmajor);
+		printk(KERN_ERR "%s: cannot register chrdev (%d)\n", __FUNCTION__, diagmajor);
 
 	return diagmajor;
-    }
+}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,2)
     diag_class = CLASS_CREATE(THIS_MODULE, CNXTTARGET"diag");

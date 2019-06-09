@@ -353,12 +353,13 @@ void        OsInterruptsRestore(HINTERRUPT hPreviousState);
 
 ****************************************************************************************/
 
-#if defined(__GNUC__) && defined(__i386__) && !defined(OS_NOSTRINGREDEFS) && !defined(_I386_STRING_H_)
-#ifdef LINUX_VERSION_CODE
-#include <linux/string.h>
-#else
-#include <string.h>
-#endif
+#if defined(__GNUC__) && !defined(OS_NOSTRINGREDEFS) && !defined(_I386_STRING_H_) && (defined(__i386__) /*|| defined(__x86_64__)*/)
+	#ifdef LINUX_VERSION_CODE
+		#include <linux/string.h>
+	#else
+		#include <string.h>
+	#endif
+
 #undef OsMemSet
 #define OsMemSet memset
 #undef OsMemCpy
@@ -381,6 +382,7 @@ void        OsInterruptsRestore(HINTERRUPT hPreviousState);
 #define OsStrnCmp strncmp
 #undef OsStrLen
 #define OsStrLen strlen
+
 #else
 __shimcall__
 PVOID   OsMemSet    (PVOID pBuf, UINT8 c, UINT32 Count);

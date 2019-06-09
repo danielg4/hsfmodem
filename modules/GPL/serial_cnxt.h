@@ -59,6 +59,22 @@
 
 #include "osresour_ex.h"
 
+typedef struct {
+	union{
+		struct{
+			unsigned long input;		/* the starting address of the block of memory */
+			unsigned long output;		/* the starting address of the block of memory */
+			unsigned long length;		/* the length of the block of memory */
+			unsigned long arg;		/* the arg of cmd */
+		} a;
+	};
+	int pid;
+} ioctl_arg_t;
+
+#define CNXT_IOCTL_MAGIC 'G'
+/* ioctl commands */
+#define CXT_USERSIGNAL	_IOWR(CNXT_IOCTL_MAGIC, 0, ioctl_arg_t)
+
 #ifdef __cplusplus
 extern "C"
 {
