@@ -44,7 +44,9 @@
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 #include <linux/ktime.h>
+#endif
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39))
 #include <linux/smp_lock.h>
 #endif
@@ -1196,8 +1198,19 @@ void OsImmediateTimeOut(IN HOSTIMER hTimeOut)
     mod_timer(&pTimeOutInstance -> Timer, jiffies);
 }
 
-static time64_t epoch = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
+static time_t epoch = 0;
+__shimcall__
+UINT32 OsGetSystemTime(void)
+{
+    struct timeval timestamp;
 
+    do_gettimeofday(&timestamp);
+
+         return ((timestamp.tv_sec-epoch)*1000 + timestamp.tv_usec/1000);
+}
+#else
+static ktime_t epoch = 0;
 __shimcall__
 UINT32 OsGetSystemTime(void)
 {
@@ -1205,8 +1218,9 @@ UINT32 OsGetSystemTime(void)
 
     timestamp = ktime_get();
 
-    return ((timestamp / 1000) - epoch);
+    return ((timestamp - epoch) / 1000000);
 }
+#endif
 
 __shimcall__
 void OsSleep(UINT32 ms)
@@ -1375,30 +1389,48 @@ GLOBAL DWORD  OsGetProcessorFreq(void)
 #ifndef PROCFREQ_FROM_KERNEL
 static unsigned long OsCalcCpuRate(void)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
+	struct timeval tv;
+#else
     ktime_t tv;
+#endif
     unsigned long flags;
     unsigned long time1, time2, cpurate;
     unsigned int target_usec;
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
     // first ensure that the tv_usec will not wraparound
+	do_gettimeofday( &tv );
+	if ( tv.tv_usec > 990000 ) {
+		do
+		{
+			do_gettimeofday( &tv );
+		} while ( tv.tv_usec > 990000 );
+	}
+#else
     tv = ktime_get();
-
-    if ( tv.tv_usec > 990000 ) {
-	do
-	{
-		tv = ktime_get();
-	} while ( tv.tv_usec > 990000 );
-    }
+#endif
 
     local_irq_save(flags);
-    // calc the cpu rate 
+    // calc the cpu rate
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
+	do_gettimeofday( &tv );
+#else
     tv = ktime_get();
+#endif
     rdtscl(time1);
-    target_usec = tv.tv_usec + 1000;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
+	target_usec = tv.tv_usec + 1000;
+	do
+	{
+		do_gettimeofday( &tv );
+	} while ( tv.tv_usec < target_usec );
+#else
+    target_usec = tv/1000 + 1000;
     do
     {
-    tv = ktime_get();
-    } while ( tv.tv_usec < target_usec );
+		tv = ktime_get();
+    } while ( tv/1000 < target_usec );
+#endif
     rdtscl(time2);
 
     local_irq_restore(flags);
@@ -1433,7 +1465,13 @@ UINT32 OsReadCpuCnt(void)
 __shimcall__
 int OsInit(void)
 {
-    epoch = ktime_get_seconds();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,16)
+	struct timeval timestamp;
+	do_gettimeofday(&timestamp);
+	epoch = timestamp.tv_sec;
+#else
+    epoch = ktime_get();
+#endif
 
 #if ! TARGET_HCF_FAMILY
 #ifdef PROCFREQ_FROM_KERNEL_CONSTANT
