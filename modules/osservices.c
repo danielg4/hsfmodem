@@ -68,8 +68,11 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 #include <asm/msr.h>
+#define rdtscl(x) do { (x) = rdtsc_ordered(); } while (0)
+#endif
 
-#define rdtscl(x) rdtscll(x)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
+#include <uapi/linux/sched/types.h>
 #endif
 
 #ifdef for_each_process
@@ -440,7 +443,8 @@ struct kwork_data {
 
 static void OsThreadStart(OSTHRD *osthrd, const char *name, BOOLEAN highestprio)
 {
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
+	struct sched_param param;
+	param.sched_priority = MAX_RT_PRIO - 1;
 	
 	memset(osthrd, 0, sizeof(OSTHRD));
 	init_kthread_worker(&osthrd->kworker);
@@ -680,7 +684,7 @@ static int cnxt_thread(OSTHRD *osthrd)
 				schedule();
 			}
 		}
-		current->state = TASK_RUNNING;
+		current->__state = TASK_RUNNING;
 		remove_wait_queue(&osthrd->wq, &wait);
 	}
 
@@ -1648,7 +1652,7 @@ __shimcall__ int OsInit(void)
 			schedule();
 		}
 
-		current->state = TASK_RUNNING;
+		current->__state = TASK_RUNNING;
 		//OsDebugPrintf("TRUN");
 		remove_wait_queue(&pEvent->wq, &wait);
 		//OsDebugPrintf("aft RWQ");
@@ -1724,7 +1728,7 @@ __shimcall__ int OsInit(void)
 			//OsDebugPrintf("ST");
 		} while ( tmticks && (tmticks = schedule_timeout(tmticks)) );
 
-		current->state = TASK_RUNNING;
+		current->__state = TASK_RUNNING;
 		//OsDebugPrintf("TRUN");
 		remove_wait_queue(&pEvent->wq, &wait);
 		//OsDebugPrintf("aft RWQ");

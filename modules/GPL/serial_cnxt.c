@@ -124,11 +124,11 @@ static struct uart_driver cnxt_reg = {
 	.owner		=				THIS_MODULE,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 	#ifdef CONFIG_DEVFS_FS
-		.normal_name	=		"ttyS"CNXTSERDEV"%d",
-		.callout_name	=		"cua"CNXTSERDEV"%d",
+		.normal_name	=		"ttyS" CNXTSERDEV "%d",
+		.callout_name	=		"cua" CNXTSERDEV "%d",
 	#else
-		.normal_name	=		"ttyS"CNXTSERDEV,
-		.callout_name	=		"cua"CNXTSERDEV,
+		.normal_name	=		"ttyS" CNXTSERDEV,
+		.callout_name	=		"cua" CNXTSERDEV,
 	#endif
 	.normal_driver	=		&cnxt_tty_driver_normal,
 	.callout_driver	=		&cnxt_tty_driver_callout,
@@ -137,11 +137,11 @@ static struct uart_driver cnxt_reg = {
 	.termios_locked	=		cnxt_termios_locked,
 	.port		=		cnxt_ports,
 #else
-	.driver_name	=		CNXTTARGET"serial",
+	.driver_name	=		CNXTTARGET "serial",
 	#ifdef FOUND_DEVFS
-		.devfs_name	=		"ttyS"CNXTSERDEV,
+		.devfs_name	=		"ttyS" CNXTSERDEV,
 	#endif
-	.dev_name	=		"ttyS"CNXTSERDEV,
+	.dev_name	=		"ttyS" CNXTSERDEV,
 #endif
 	.minor		=		CNXTSERIALMINOR,
 	.nr		=		NR_PORTS,
@@ -534,7 +534,13 @@ static void cnxt_intr(void *dev_id)
 		spin_unlock_irqrestore(&inst->lock, flags);
 		
 		if(inst->signal.user_pid != 0){
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)			
 			struct siginfo info={0};
+#else
+			struct kernel_siginfo info={0};
+#endif
+
 			struct task_struct *t;
 					
 			rcu_read_lock();		
@@ -1147,7 +1153,9 @@ MODULE_PARM_DESC(loglastcallstatus, "Log AT#UG command output after each connect
 		return single_open(filp, cnxt_get_lastcallstatus, NULL);
 	}
 	
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
 	
+
 	static const struct file_operations cnxt_proc_ops_hwinst = {
 		.owner = THIS_MODULE,
 		.open = cnxt_proc_open_hwinst,
@@ -1179,7 +1187,37 @@ MODULE_PARM_DESC(loglastcallstatus, "Log AT#UG command output after each connect
 		.read = seq_read,
 		.release = single_release,		
 	};
-	
+#else
+
+        static const struct proc_ops cnxt_proc_ops_hwinst = {
+                .proc_open = cnxt_proc_open_hwinst,
+                .proc_lseek = seq_lseek,
+                .proc_read = seq_read,
+                .proc_release = single_release,
+        };
+
+        static const struct proc_ops cnxt_proc_ops_hwprofile = {
+                .proc_open = cnxt_proc_open_hwprofile,
+                .proc_lseek = seq_lseek,
+                .proc_read = seq_read,
+                .proc_release = single_release,
+        };
+
+        static const struct proc_ops cnxt_proc_ops_hwrevision = {
+                .proc_open = cnxt_proc_open_hwrevision,
+                .proc_lseek = seq_lseek,
+                .proc_read = seq_read,
+                .proc_release = single_release,
+        };
+
+        static const struct proc_ops cnxt_proc_ops_lastcallstatus = {
+                .proc_open = cnxt_proc_open_lastcallstatus,
+                .proc_lseek = seq_lseek,
+                .proc_read = seq_read,
+                .proc_release = single_release,
+        };
+
+#endif	
 #else
 	static int cnxt_get_hwinst(char *buf, char **start, off_t offset, int length, int *eof, void *data)
 	{
@@ -1211,11 +1249,22 @@ static int cnxt_flush_nvm(struct file *file, const char __user *buffer, unsigned
 }
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0) )
+
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0) )
+
 static const struct file_operations cnxt_proc_ops_flushnvm = {
 	.owner = THIS_MODULE,
 	.write = cnxt_flush_nvm
 };
 // TODO
+
+#else
+static const struct proc_ops cnxt_proc_ops_flushnvm = {
+        .proc_write = cnxt_flush_nvm
+};
+// TODO
+
+#endif
 
 #else
 static int cnxt_get_hwprofile(char *buf, char **start, off_t offset, int length, int *eof, void *data)
@@ -1447,8 +1496,11 @@ int cnxt_serial_add(POS_DEVNODE devnode, unsigned int iobase, void *membase, uns
 	port.uartclk = BASE_BAUD * 16;
 	port.fifosize = 16;
 	port.ops = &cnxt_pops;
+#if ( LINUX_VERSION_CODE <= KERNEL_VERSION(5,10,0) )
 	port.flags = ASYNC_BOOT_AUTOCONF;
-	
+#else
+	port.flags = UPF_BOOT_AUTOCONF;	
+#endif
 	if((r = uart_register_port(&cnxt_reg, &port)) < 0) {
 		inst->mctrl_flags &= ~TIOCM_DSR;
 		ComCtrl_Close(inst->hcomctrl);
@@ -1578,7 +1630,7 @@ static int __init cnxt_serial_init(void)
 	cnxt_reg.callout_major = calloutmajor;
 #else
 	cnxt_reg.major = serialmajor;
-	(void)calloutmajor;
+	//(void)calloutmajor;
 #endif
 
 	if(serialmajor == 0) {

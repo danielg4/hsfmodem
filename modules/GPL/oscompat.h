@@ -708,7 +708,7 @@ typedef struct uart_info uart_info_t;
 #endif
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0) )
-#define rdtscl(low)	((low) = (u32)rdtsc())
+#define rdtscl(low)	do { (low) = rdtsc_ordered(); } while (0)
 #endif
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0) )

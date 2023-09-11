@@ -31,6 +31,7 @@ MODULE_PARM_DESC(pmacftrmodemenable, "Enable internal modem if non-zero");
 #include "comctrl_ex.h"
 
 #include <linux/slab.h>
+#include <linux/module.h>
 
 #ifdef CONFIG_PPC_PMAC
 #include <asm/machdep.h>

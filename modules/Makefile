@@ -14,7 +14,7 @@ else
 modroot := $(obj)
 endif
 TOP := $(shell cd $(modroot)/.. && pwd)
-WITHIN_KBUILD=yes
+WITHIN_KBUILD = yes
 endif
 
 include $(TOP)/config.mak
@@ -102,12 +102,12 @@ CC := $(shell $(TOP)/modules/kernelcompiler.sh $(KERNELVER) $(CNXT_KERNELSRC))
 FOUND_PCI_DEV_SLOT_NAME := $(shell grep -q '[ 	]slot_name' ${REAL_KERNELSRC}/include/linux/pci.h 2>/dev/null && echo -DFOUND_PCI_DEV_SLOT_NAME)
 FOUND_DEVFS := $(shell [ -e "${REAL_KERNELSRC}/include/linux/devfs_fs_kernel.h" ] && echo -DFOUND_DEVFS)
 
-EXTRA_CFLAGS+= $(FOUND_PCI_DEV_SLOT_NAME) $(FOUND_DEVFS)
+EXTRA_CFLAGS += $(FOUND_PCI_DEV_SLOT_NAME) $(FOUND_DEVFS)
 
 KBUILD_SUPPORTED := $(shell test -e ${CNXT_KERNELSRC}/scripts/kconfig && echo yes || echo no)
 
 ifeq ($(KBUILD_SUPPORTED),yes)
-KO= ko
+KO = ko
 KBUILD_EXTMOD_SUPPORTED := $(shell egrep -q 'KBUILD_EXTMOD|KERNEL_SOURCE|KERNELSRC' ${CNXT_KERNELSRC}/Makefile 2>/dev/null && echo yes || echo no)
 
 FOUND_CLASS_SIMPLE := $(shell grep -q 'class_simple_device_add' ${REAL_KERNELSRC}/include/linux/device.h 2>/dev/null && echo -DFOUND_CLASS_SIMPLE)
@@ -140,7 +140,7 @@ FOUND_CURRENT_CRED := $(shell grep -q 'struct cred' ${REAL_KERNELSRC}/include/li
 FOUND_LINUX_BYTEORDER_SWAB := $(shell test -e ${REAL_KERNELSRC}/include/linux/byteorder/swab.h 2>/dev/null && echo -DFOUND_LINUX_BYTEORDER_SWAB)
 FOUND_DEV_NAME := $(shell grep -q 'dev_name' ${REAL_KERNELSRC}/include/linux/device.h 2>/dev/null && echo -DFOUND_DEV_NAME)
 
-EXTRA_CFLAGS+= $(FOUND_CLASS_SIMPLE) $(FOUND_UART_REGISTER_PORT) $(FOUND_TTY_START_STOP) $(FOUND_CLASS_DEVICE_PARENT) $(FOUND_MODULE_PARAM) $(FOUND_PM_MESSAGE_T) $(FOUND_PM_MESSAGE_STRUCT) $(FOUND_PCI_CHOOSE_STATE) $(FOUND_LINUX_SUSPEND) $(FOUND_USB_DRIVER_OWNER) $(FOUND_PCI_REGISTER_DRIVER) $(FOUND_TTY_NEW_API) $(FOUND_TOUCH_ATIME) $(FOUND_LINUX_CONFIG) $(FOUND_IRQ_HANDLER_T) $(FOUND_USB_COMPLETE_PT_REGS) $(FOUND_KTERMIOS) $(FOUND_PCI_GET_DEVICE) $(FOUND_LINUX_SEMAPHORE) $(FOUND_CLASS_DEVICE) $(FOUND_THREAD_XSTATE) $(FOUND_DEVICE_CREATE_DRVDATA) $(FOUND_DEVICE_CREATE_WITH_DRVDATA) $(FOUND_STRUCT_TTY_PORT) $(FOUND_CURRENT_CRED) $(FOUND_LINUX_BYTEORDER_SWAB) $(FOUND_DEV_NAME) $(FOUND_NO_STRUCT_UART_INFO)
+EXTRA_CFLAGS += $(FOUND_CLASS_SIMPLE) $(FOUND_UART_REGISTER_PORT) $(FOUND_TTY_START_STOP) $(FOUND_CLASS_DEVICE_PARENT) $(FOUND_MODULE_PARAM) $(FOUND_PM_MESSAGE_T) $(FOUND_PM_MESSAGE_STRUCT) $(FOUND_PCI_CHOOSE_STATE) $(FOUND_LINUX_SUSPEND) $(FOUND_USB_DRIVER_OWNER) $(FOUND_PCI_REGISTER_DRIVER) $(FOUND_TTY_NEW_API) $(FOUND_TOUCH_ATIME) $(FOUND_LINUX_CONFIG) $(FOUND_IRQ_HANDLER_T) $(FOUND_USB_COMPLETE_PT_REGS) $(FOUND_KTERMIOS) $(FOUND_PCI_GET_DEVICE) $(FOUND_LINUX_SEMAPHORE) $(FOUND_CLASS_DEVICE) $(FOUND_THREAD_XSTATE) $(FOUND_DEVICE_CREATE_DRVDATA) $(FOUND_DEVICE_CREATE_WITH_DRVDATA) $(FOUND_STRUCT_TTY_PORT) $(FOUND_CURRENT_CRED) $(FOUND_LINUX_BYTEORDER_SWAB) $(FOUND_DEV_NAME) $(FOUND_NO_STRUCT_UART_INFO)
 
 FOUND_KZALLOC := $(shell grep -q 'kzalloc' ${REAL_KERNELSRC}/include/linux/slab.h 2>/dev/null && echo -DFOUND_KZALLOC)
 FOUND_OPEN_SUBSTREAM_NOFILE := $(shell grep -q 'snd_pcm_open_substream.*struct[ \t]*file' ${REAL_KERNELSRC}/include/sound/pcm.h 2>/dev/null || echo -DFOUND_OPEN_SUBSTREAM_NOFILE)
@@ -156,13 +156,13 @@ HDA_CFLAGS := $(FOUND_KZALLOC) $(FOUND_OPEN_SUBSTREAM_NOFILE) $(FOUND_TLV) $(FOU
 ifeq ($(ON_BUILD_SYSTEM)-$(CONFIG_SND_HDA_INTEL),no-)
 # On Ubuntu Gutsy (7.10), the HDA modules are not included in linux-image but in a seprarate package
 # and CONFIG_SND_HDA_INTEL is not enabled in the kernel .config file
-CONFIG_SND_HDA_INTEL=$(shell modprobe -n snd-hda-intel > /dev/null 2>&1 && echo y || echo n)
+CONFIG_SND_HDA_INTEL = $(shell modprobe -n snd-hda-intel > /dev/null 2>&1 && echo y || echo n)
 endif
 
 #MODULAR_HDA := $(shell test -e  ${REAL_KERNELSRC}/include/sound/hda_codec.h && echo yes || echo no)
 
 else
-KO= o
+KO = o
 
 # Configure various machine specific CFLAGS for compiling kernel modules
 #EXTRA_CFLAGS+= -mpreferred-stack-boundary=2
@@ -170,29 +170,29 @@ KO= o
 EXTRA_CFLAGS += -Wall -Wstrict-prototypes -Werror-implicit-function-declaration -O2 -I$(CNXT_KERNELSRC)/include
 EXTRA_CFLAGS += -D__KERNEL__ -DMODULE
 
-CONFIG_MODVERSIONS= $(shell echo CONFIG_MODVERSIONS | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_MODVERSIONS' && echo n || echo y)
+CONFIG_MODVERSIONS = $(shell echo CONFIG_MODVERSIONS | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_MODVERSIONS' && echo n || echo y)
 ifeq ($(CONFIG_MODVERSIONS),y)
-MODVERFLAGS= -DMODVERSIONS -include $(CNXT_KERNELSRC)/include/linux/modversions.h
+MODVERFLAGS = -DMODVERSIONS -include $(CNXT_KERNELSRC)/include/linux/modversions.h
 endif
-CONFIG_USB= $(shell echo 'CONFIG_USB CONFIG_USB_MODULE' | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_USB CONFIG_USB_MODULE' && echo n || echo y)
-CONFIG_SND_HDA_INTEL=$(shell echo 'CONFIG_SND_HDA_INTEL CONFIG_SND_HDA_INTEL_MODULE' | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_SND_HDA_INTEL CONFIG_SND_HDA_INTEL_MODULE' && echo n || echo y)
+CONFIG_USB = $(shell echo 'CONFIG_USB CONFIG_USB_MODULE' | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_USB CONFIG_USB_MODULE' && echo n || echo y)
+CONFIG_SND_HDA_INTEL = $(shell echo 'CONFIG_SND_HDA_INTEL CONFIG_SND_HDA_INTEL_MODULE' | gcc ${DISTRO_CFLAGS} -E -I${CNXT_KERNELSRC}/include -include ${CNXT_KERNELSRC}/include/linux/config.h - | grep -q 'CONFIG_SND_HDA_INTEL CONFIG_SND_HDA_INTEL_MODULE' && echo n || echo y)
 
-EXTRA_CFLAGS+= -include $(CNXT_KERNELSRC)/include/linux/config.h
-EXTRA_CFLAGS+= $(MODVERFLAGS)
-EXTRA_CFLAGS+= -DFOUND_TTY_START_STOP -DFOUND_LINUX_BYTEORDER_SWAB
+EXTRA_CFLAGS += -include $(CNXT_KERNELSRC)/include/linux/config.h
+EXTRA_CFLAGS += $(MODVERFLAGS)
+EXTRA_CFLAGS += -DFOUND_TTY_START_STOP -DFOUND_LINUX_BYTEORDER_SWAB
 endif # KBUILD_SUPPORTED
 
 paren := (
 FOUND_KILL_PROC := $(shell grep -q 'kill_proc$(paren)' ${REAL_KERNELSRC}/include/linux/sched.h 2>/dev/null && echo -DFOUND_KILL_PROC)
-EXTRA_CFLAGS+= $(FOUND_KILL_PROC)
+EXTRA_CFLAGS += $(FOUND_KILL_PROC)
 
 ## END OF CONFIGURATION SECTION
 ## no changes should be necessary beyond this point
 #####################################################################
 
-EXTRA_CFLAGS+= -DCNXTTARGET="\"$(CNXTTARGET)\""
-EXTRA_CFLAGS+= -DCNXTDRIVER="\"$(CNXTDRIVER)\""
-EXTRA_CFLAGS+= -DCNXTDRVDSC="\"$(CNXTDRVDSC)\""
+EXTRA_CFLAGS += -DCNXTTARGET="\"$(CNXTTARGET)\""
+EXTRA_CFLAGS += -DCNXTDRIVER="\"$(CNXTDRIVER)\""
+EXTRA_CFLAGS += -DCNXTDRVDSC="\"$(CNXTDRVDSC)\""
 
 ifneq ($(WITHIN_KBUILD),yes)
 .PHONY: default
@@ -244,47 +244,47 @@ endif
 
 
 ifeq ($(CNXTDRIVER),dgc)
-ALL_MODS= $(CNXTTARGET)usbdcp.$(KO)
+ALL_MODS = $(CNXTTARGET)usbdcp.$(KO)
 else
-PRP_MODS= $(CNXTTARGET)engine.$(KO)
-ALL_MODS= $(CNXTTARGET)osspec.$(KO) $(CNXTTARGET)serial.$(KO) $(PRP_MODS)
+PRP_MODS = $(CNXTTARGET)engine.$(KO)
+ALL_MODS = $(CNXTTARGET)osspec.$(KO) $(CNXTTARGET)serial.$(KO) $(PRP_MODS)
 endif
 
 ifeq ($(CNXTDRIVER),hcf)
-ALL_MODS+= $(CNXTTARGET)hw.$(KO)
+ALL_MODS += $(CNXTTARGET)hw.$(KO)
 endif
 ifeq ($(CNXTDRIVER),hsf)
-PRP_MODS+= $(CNXTTARGET)pcibasic2.$(KO)
-PRP_MODS+= $(CNXTTARGET)pcibasic3.$(KO)
+PRP_MODS += $(CNXTTARGET)pcibasic2.$(KO)
+PRP_MODS += $(CNXTTARGET)pcibasic3.$(KO)
 ifneq ($(CONFIG_USB),)
 ifneq ($(CONFIG_USB),n)
-PRP_MODS+= $(CNXTTARGET)usbcd2.$(KO)
+PRP_MODS += $(CNXTTARGET)usbcd2.$(KO)
 endif
 ifeq ($(MODULAR_HDA),yes)
-PRP_MODS+= snd-hda-codec-hsfmodem.$(KO)
+PRP_MODS += snd-hda-codec-hsfmodem.$(KO)
 endif
 endif
 ifneq ($(CONFIG_SND_HDA_INTEL),)
 ifneq ($(CONFIG_SND_HDA_INTEL),n)
-PRP_MODS+= $(CNXTTARGET)hda.$(KO)
+PRP_MODS += $(CNXTTARGET)hda.$(KO)
 endif
 endif
-PRP_MODS+= $(CNXTTARGET)mc97ich.$(KO) $(CNXTTARGET)mc97via.$(KO) $(CNXTTARGET)mc97ali.$(KO) $(CNXTTARGET)mc97ati.$(KO) $(CNXTTARGET)mc97sis.$(KO)
-PRP_MODS+= $(CNXTTARGET)soar.$(KO)
+PRP_MODS += $(CNXTTARGET)mc97ich.$(KO) $(CNXTTARGET)mc97via.$(KO) $(CNXTTARGET)mc97ali.$(KO) $(CNXTTARGET)mc97ati.$(KO) $(CNXTTARGET)mc97sis.$(KO)
+PRP_MODS += $(CNXTTARGET)soar.$(KO)
 endif
 
 OSSPEC_OBJS = osservices.o osstdio.o osnvm.o osresour.o osstring.o osmemory.o osdiag.o
 ifeq ($(CNXTTARGET),hcfusb)
-OSSPEC_OBJS+= osusb.o
+OSSPEC_OBJS += osusb.o
 endif
 ifeq ($(CNXTTARGET),hsf)
-OSSPEC_OBJS+= osusb.o osfloat.o osdcp.o
+OSSPEC_OBJS += osusb.o osfloat.o osdcp.o
 endif
 ifeq ($(IMPORTED_SCR_SUPPORT),yes)
-OSSPEC_OBJS+= osscr.o cdbgscr.o imported/$(CNXTDRIVER)scr-$(IMPORTED_ARCH).O
+OSSPEC_OBJS += osscr.o cdbgscr.o imported/$(CNXTDRIVER)scr-$(IMPORTED_ARCH).O
 endif
 ifeq ($(IMPORTED_BLAM_SUPPORT),yes)
-OSSPEC_OBJS+= imported/$(CNXTDRIVER)blam-$(IMPORTED_ARCH).O
+OSSPEC_OBJS += imported/$(CNXTDRIVER)blam-$(IMPORTED_ARCH).O
 endif
 
 CFLAGS_osnvm.o += -DCNXTSBINDIR=\"$(CNXTSBINDIR)\" -DCNXTNVMDIR=\"$(CNXTNVMDIR)\"
@@ -294,16 +294,16 @@ CFLAGS_osscr.o += -DCNXTSCRMAJOR=$(CNXTSCRMAJOR)
 
 ifneq ($(WITHIN_KBUILD),yes)
 ifeq ($(KBUILD_SUPPORTED),yes)
-MODULES_SRC_DIR=$(shell pwd)
+MODULES_SRC_DIR = $(shell pwd)
 
 all:
 ifeq ($(KBUILD_EXTMOD_SUPPORTED),yes)
-	(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "M=$(MODULES_SRC_DIR)" "CC=$(CC)" modules)
+	-(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "M=$(MODULES_SRC_DIR)" "CC=$(CC)" modules)
 ifeq ($(REPLACE_HDA)|$(MODULAR_HDA),true|no)
 	-(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "M=$(MODULES_SRC_DIR)/GPL/hda" "CC=$(CC)" "HDA_CFLAGS=$(HDA_CFLAGS)" modules)
 endif
 else
-	(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "SUBDIRS+=$(MODULES_SRC_DIR)" "CC=$(CC)" modules)
+	-(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "SUBDIRS+=$(MODULES_SRC_DIR)" "CC=$(CC)" modules)
 ifeq ($(REPLACE_HDA)|$(MODULAR_HDA),true|no)
 	-(cd ${CNXT_KERNELSRC} && make "CNXT_KERNELSRC=${CNXT_KERNELSRC}" "SUBDIRS+=$(MODULES_SRC_DIR)/GPL/hda" "CC=$(CC)" "HDA_CFLAGS=$(HDA_CFLAGS)" modules)
 endif
@@ -357,17 +357,16 @@ ifeq ($(CNXTDRIVER),dgc)
 CFLAGS_mod_dgcusbdcp.o = -DEXPORT_SYMTAB
 endif
 
-
 NON_ATOMIC_TTY_STRUCT_COUNT := $(shell grep -A 15 'struct tty_struct {' ${CNXT_KERNELSRC}/include/linux/tty.h 2>/dev/null | grep -q 'int count;' && echo -DNON_ATOMIC_TTY_STRUCT_COUNT)
 
-CFLAGS_serial_cnxt.o = -DEXPORT_SYMTAB
-CFLAGS_serial_cnxt.o+= -DCNXTSERIALMAJOR=$(CNXTSERIALMAJOR) -DCNXTCALOUTMAJOR=$(CNXTCALOUTMAJOR) -DCNXTSERIALMINOR=$(CNXTSERIALMINOR)
-CFLAGS_serial_cnxt.o+= -DCNXTSERDEV="\"$(CNXTSERDEV)\""
-CFLAGS_serial_cnxt.o+= -DCNXTMAXMDM="$(CNXTMAXMDM)"
-CFLAGS_serial_cnxt.o+= $(NON_ATOMIC_TTY_STRUCT_COUNT)
+CFLAGS_GPL/serial_cnxt.o = -DEXPORT_SYMTAB
+CFLAGS_GPL/serial_cnxt.o += -DCNXTSERIALMAJOR=$(CNXTSERIALMAJOR) -DCNXTCALOUTMAJOR=$(CNXTCALOUTMAJOR) -DCNXTSERIALMINOR=$(CNXTSERIALMINOR)
+CFLAGS_GPL/serial_cnxt.o += -DCNXTSERDEV="\"$(CNXTSERDEV)\""
+CFLAGS_GPL/serial_cnxt.o += -DCNXTMAXMDM="$(CNXTMAXMDM)"
+CFLAGS_GPL/serial_cnxt.o += $(NON_ATOMIC_TTY_STRUCT_COUNT)
 
 ifneq ($(WITHIN_KBUILD),yes)
-CFLAGS_serial_cnxt.o+= -DCNXTSERIAL_INCLUDE_CORE -DFOUND_UART_REGISTER_PORT
+CFLAGS_GPL/serial_cnxt.o += -DCNXTSERIAL_INCLUDE_CORE -DFOUND_UART_REGISTER_PORT
 
 GPL/serial_cnxt.o: GPL/serial_core.c GPL/serial_core.h
 

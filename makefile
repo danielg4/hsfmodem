@@ -29,7 +29,6 @@ endif
 
 SYMLINK_SUPPORT := $(shell if ln -sf symlinktest .lntst.$$$$ > /dev/null 2>&1; then echo yes; else echo no; fi; rm -f .lntst.*)
 
-
 ifeq ($(IMPORTED_TARGET),TARGET_DGC_LINUX)
 SUBDIRS = scripts modules
 else

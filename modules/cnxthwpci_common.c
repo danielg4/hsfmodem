@@ -20,6 +20,7 @@ MODULE_INFO(supported, "yes");
 #include "osmemory.h"
 
 #include "cnxthw_common.c"
+#include <linux/module.h>
 
 #if !TARGET_HCF_FAMILY
 __shimcall__

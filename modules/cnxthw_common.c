@@ -9,6 +9,8 @@
 
 #include "serial_cnxt.h"
 
+#include <linux/module.h>
+
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif

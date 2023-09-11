@@ -23,7 +23,7 @@ if [ -n "${RPM_BUILD_ROOT}${DEB_HOST_GNU_SYSTEM}" ]; then
 			# This situation happens when using "make rpmprecomp" or "make debprecomp"
 			kstr="`proc_version_gcc`"
 		else
-			kstr="gcc version 3.2"
+			kstr="gcc version 11.4"
 		fi
 	fi
 else

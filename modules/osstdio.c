@@ -21,6 +21,10 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
+#if ( LINUX_VERSION_CODE > KERNEL_VERSION(4,14,0) )
+#include <linux/kernel.h>
+#endif
+
 #ifdef FOUND_CURRENT_CRED
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0) )
 static int set_current_fsuid(kuid_t fsuid)
@@ -183,8 +187,8 @@ __shimcall__ size_t OsFRead(void *ptr, size_t size, size_t nmemb, FILE *filp, in
 	if(IS_ERR(filp))
 		bytes = -EINVAL;
 	else {
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0) )
 		mm_segment_t oldfs;
-
 		oldfs = get_fs();
 		set_fs(get_ds());
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) )		
@@ -194,6 +198,9 @@ __shimcall__ size_t OsFRead(void *ptr, size_t size, size_t nmemb, FILE *filp, in
 	bytes = filp->f_op->read(filp, ptr, size*nmemb, &filp->f_pos);
 #endif				
 		set_fs(oldfs);
+#else
+		bytes = kernel_read(filp, ptr, size*nmemb, &filp->f_pos);
+#endif
 	}
 	if (errno_p && bytes < 0) 
 		*errno_p = -(bytes);
@@ -213,8 +220,9 @@ __shimcall__ size_t OsFWrite(const void *ptr, size_t size, size_t nmemb, FILE *f
 	if(IS_ERR(filp))
 		bytes = -EINVAL;
 	else {
-		mm_segment_t oldfs;
 
+#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0) )
+		mm_segment_t oldfs;
 		oldfs = get_fs();
 		set_fs(get_ds());
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) )				
@@ -223,6 +231,9 @@ __shimcall__ size_t OsFWrite(const void *ptr, size_t size, size_t nmemb, FILE *f
 		bytes = filp->f_op->write(filp, ptr, size*nmemb, &filp->f_pos);
 #endif		
 		set_fs(oldfs);
+#else
+		bytes = kernel_write(filp, ptr, size*nmemb, &filp->f_pos);
+#endif
 	}
 	if (errno_p && bytes < 0) 
 		*errno_p = -(bytes);
@@ -267,7 +278,6 @@ __shimcall__ int OsFSeek(FILE *filp, long offset, int origin)
 {
 	loff_t (*fn)(struct file *, loff_t, int);
 	loff_t retval;
-	mm_segment_t oldfs;
 
 	ASSERT(OsContextAllowsSleeping());
 	//printk(KERN_INFO "%s(filp=%p, offset=%ld, origin=%d)\n", __FUNCTION__, filp, offset, origin); //KDB_ENTER();
@@ -279,11 +289,17 @@ __shimcall__ int OsFSeek(FILE *filp, long offset, int origin)
 		fn = filp->f_op->llseek;
 	else
 		fn = default_llseek;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+	mm_segment_t oldfs;
 
 	oldfs = get_fs();
 	set_fs(get_ds());
 	retval = fn(filp, offset, origin);
 	set_fs(oldfs);
+
+#else
+	retval = kernel_read(filp, offset, (char *)NULL, 0);
+#endif
 	if(retval < 0) {
 		printk(KERN_ERR "%s(filp %p, offset=%ld origin=%d): error %d\n", __FUNCTION__, filp, offset, origin, (int)retval);
 	}
